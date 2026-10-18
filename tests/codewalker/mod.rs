@@ -1,32 +1,18 @@
-//! Drawables and texture dictionaries against an independent reader's decoding of the same files.
-//!
-//! Oracle (`PRIMASE_GTA_RESOURCES`): a folder of JSON files `{path, kind: "drawable" | "ytd", value}`:
-//! - drawable: bounds, LOD distances, render masks, the embedded texture count, shaders (`name`, and per texture or
-//!   constant-buffer parameter in stored order: `g9_name`, `texture`, `values` padded to four floats), and per LOD
-//!   the models (`render_mask`, `skeleton_binding`, `shader_mapping`) with their geometries (`shader`, `vertices`,
-//!   `stride`, `indices`, `aabb`, SHA-256 of the indices and, per legacy vertex component, of that component's bytes
-//!   across all vertices);
-//! - ytd: per texture name, size, depth, levels, buffer format code, data length and SHA-256.
-//!
-//! That reader renames Enhanced parameter names to legacy ones and reorders vertex components into the legacy
-//! layout; the comparison uses the stored names it also reports and compares components by semantic, so neither
-//! transformation hides a difference. Floats compare bit for bit.
-//!
-//! Needs `PRIMASE_GTA_DIR` and `PRIMASE_GTA_KEYS`.
-use std::fs::File;
+//! The comparisons of our reader's structures with CodeWalker's decodings (the harness's `drawable` and `ytd` dumps),
+//! shared by the tests that read those dumps. Test code: it maps our structures into the dump's terms and compares,
+//! with no format logic of its own.
+#![allow(dead_code)]
 
 use primase_gta::drawable::{Drawable, Geometry, Model, ParamValue};
 use primase_gta::texture::{Texture, TextureDictionary};
-use primase_gta::{Install, Keys, Resource};
-use primase_testdata::real_data;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-fn sha(b: &[u8]) -> String {
+pub fn sha(b: &[u8]) -> String {
     Sha256::digest(b).iter().map(|x| format!("{x:02x}")).collect()
 }
 
-fn f32s(v: &Value) -> Vec<f32> {
+pub fn f32s(v: &Value) -> Vec<f32> {
     v.as_array()
         .expect("array")
         .iter()
@@ -36,7 +22,7 @@ fn f32s(v: &Value) -> Vec<f32> {
 
 /// Legacy vertex component index -> Enhanced semantic slot (POSITION0, BLENDWEIGHT0, BLENDINDICES0, NORMAL0,
 /// COLOR0, COLOR1, TEXCOORD0-5, TANGENT0).
-fn slot_of_component(c: u8) -> Option<u8> {
+pub fn slot_of_component(c: u8) -> Option<u8> {
     Some(match c {
         0 => 0,
         1 => 16,
@@ -50,7 +36,7 @@ fn slot_of_component(c: u8) -> Option<u8> {
     })
 }
 
-fn check_geometry(where_: &str, g: &Geometry, o: &Value, diffs: &mut Vec<String>) {
+pub fn check_geometry(where_: &str, g: &Geometry, o: &Value, diffs: &mut Vec<String>) {
     let mut diff = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
             diffs.push(format!("{where_}: {what}: ours {ours}, oracle {theirs}"));
@@ -92,7 +78,7 @@ fn check_geometry(where_: &str, g: &Geometry, o: &Value, diffs: &mut Vec<String>
     }
 }
 
-fn check_models(where_: &str, ms: &[Model], o: &Value, diffs: &mut Vec<String>) {
+pub fn check_models(where_: &str, ms: &[Model], o: &Value, diffs: &mut Vec<String>) {
     let o = o.as_array().expect("models");
     if ms.len() != o.len() {
         diffs.push(format!("{where_}: {} models, oracle {}", ms.len(), o.len()));
@@ -127,7 +113,7 @@ fn check_models(where_: &str, ms: &[Model], o: &Value, diffs: &mut Vec<String>) 
     }
 }
 
-fn check_drawable(d: &Drawable, o: &Value, diffs: &mut Vec<String>) {
+pub fn check_drawable(d: &Drawable, o: &Value, diffs: &mut Vec<String>) {
     let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<_>>();
     for (what, ours, theirs) in [
         (
@@ -223,7 +209,7 @@ fn check_drawable(d: &Drawable, o: &Value, diffs: &mut Vec<String>) {
     }
 }
 
-fn check_texture(i: usize, t: &Texture, o: &Value, diffs: &mut Vec<String>) {
+pub fn check_texture(i: usize, t: &Texture, o: &Value, diffs: &mut Vec<String>) {
     let ours = format!(
         "{} {}x{}x{} levels {} format {} data {} {}",
         t.name,
@@ -251,7 +237,7 @@ fn check_texture(i: usize, t: &Texture, o: &Value, diffs: &mut Vec<String>) {
     }
 }
 
-fn check_ytd(td: &TextureDictionary, o: &Value, diffs: &mut Vec<String>) {
+pub fn check_ytd(td: &TextureDictionary, o: &Value, diffs: &mut Vec<String>) {
     let ot = o["textures"].as_array().expect("textures");
     if td.textures.len() != ot.len() {
         diffs.push(format!("{} textures, oracle {}", td.textures.len(), ot.len()));
@@ -262,55 +248,4 @@ fn check_ytd(td: &TextureDictionary, o: &Value, diffs: &mut Vec<String>) {
             None => diffs.push(format!("texture {i}: a null entry, oracle {}", o["name"])),
         }
     }
-}
-
-#[test]
-fn drawables_and_textures_against_the_oracle() {
-    let (Some(dir), Some(key_dir), Some(oracle)) = (
-        real_data("PRIMASE_GTA_DIR"),
-        real_data("PRIMASE_GTA_KEYS"),
-        real_data("PRIMASE_GTA_RESOURCES"),
-    ) else {
-        return;
-    };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
-    let install = Install::open(&dir, &keys).expect("install");
-    let mut files: Vec<_> = std::fs::read_dir(&oracle)
-        .expect("oracle folder")
-        .map(|e| e.expect("entry").path())
-        .filter(|p| p.extension().is_some_and(|e| e == "json"))
-        .collect();
-    files.sort();
-    let mut failed = 0;
-    for f in &files {
-        let o: Value =
-            serde_json::from_str(&std::fs::read_to_string(f).expect("oracle file")).expect("oracle json");
-        let path = o["path"].as_str().expect("path");
-        let r = install.file(path).expect("file in the install");
-        let a = &install.archives[r.archive];
-        let res: Resource = a
-            .resource(&mut File::open(&a.file).expect("open archive"), r.entry, &keys)
-            .expect("resource");
-        let mut diffs = Vec::new();
-        match o["kind"].as_str() {
-            Some("drawable") => check_drawable(
-                &Drawable::read_resource(&res).expect("drawable"),
-                &o["value"],
-                &mut diffs,
-            ),
-            Some("ytd") => check_ytd(
-                &TextureDictionary::read_resource(&res).expect("ytd"),
-                &o["value"],
-                &mut diffs,
-            ),
-            k => panic!("kind {k:?}"),
-        }
-        println!("{path}: {} differences", diffs.len());
-        for d in diffs.iter().take(20) {
-            println!("    {d}");
-        }
-        failed += usize::from(!diffs.is_empty());
-    }
-    println!("{} files, {failed} with differences", files.len());
-    assert_eq!(failed, 0);
 }
