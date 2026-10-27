@@ -5,7 +5,7 @@ use std::io::Write;
 
 use primase_foundations::compress::{Compressor, Deflate};
 use rage_engine_formats::archive::keys::{KeyDigests, Keys};
-use rage_engine_formats::archive::rpf::{Archive, EntryKind};
+use rage_engine_formats::archive::rpf::{Archive, EntryKind, MAGIC};
 use rage_engine_formats::resource::PageFlags;
 
 enum Item {
@@ -476,5 +476,95 @@ fn the_listing_names_every_archive_and_file_with_its_storage() {
     // every listed file is the install's file at its path
     for f in &listed {
         assert_eq!(install.file(f.path), Some(f.file));
+    }
+}
+
+/// An archive of only a table of contents: header, 16-byte entries (as four words each) and a name table.
+fn table_only_rpf(entries: &[[u32; 4]], names: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for w in [MAGIC, entries.len() as u32, names.len() as u32, 0] {
+        out.extend(w.to_le_bytes());
+    }
+    for e in entries {
+        for w in e {
+            out.extend(w.to_le_bytes());
+        }
+    }
+    out.extend(names);
+    out
+}
+
+const DIRECTORY: u32 = 0x7FFF_FF00;
+
+/// A chain of directories each holding the next makes every path one level longer than the last, so the paths take
+/// the square of the chain's length in memory from a table that takes only its length: paths are capped.
+#[test]
+fn a_deep_chain_of_directories_is_refused_before_its_paths_are_built() {
+    let depth = 5000u32;
+    let mut entries = vec![];
+    for i in 0..depth {
+        let children = u32::from(i + 1 < depth);
+        entries.push([0, DIRECTORY, i + 1, children]);
+    }
+    let path = temp_file("chain.rpf", &table_only_rpf(&entries, b"\0"));
+    let e = Archive::open(&path, "chain.rpf", &Keys::none()).unwrap_err();
+    match e {
+        rage_engine_formats::Error::Invalid {
+            format,
+            offset,
+            detail,
+        } => {
+            assert_eq!(format, "RPF7");
+            assert!(
+                detail.contains("path of entry") && detail.contains("at most 1024 bytes"),
+                "{detail}"
+            );
+            // the offset is the table entry that makes the path too long
+            assert!(offset >= 16 && (offset - 16) % 16 == 0, "{offset}");
+        }
+        other => panic!("{other}"),
+    }
+}
+
+/// Entries may share one name in the name table, so a long name read once per entry multiplies by the entry count.
+#[test]
+fn a_long_name_shared_by_many_entries_is_refused() {
+    let mut names = vec![b'n'; 300];
+    names.push(0);
+    let mut entries = vec![[0, DIRECTORY, 1, 400]];
+    entries.extend((0..400).map(|_| [0u32, 0, 0, 0]));
+    let path = temp_file("names.rpf", &table_only_rpf(&entries, &names));
+    let e = Archive::open(&path, "names.rpf", &Keys::none())
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("name of entry 0 is 300 bytes, at most 255"), "{e}");
+}
+
+/// An archive that holds itself as a nested archive (its entry starts at its own first block) would be opened again
+/// inside itself without end. A nested archive must start after the table of contents that names it.
+#[test]
+fn an_archive_nested_in_itself_is_refused() {
+    use rage_engine_formats::archive::archive_set::Install;
+    let names = b"x.rpf\0";
+    let total = (16 + 2 * 16 + names.len()) as u32;
+    // entry 1: a plain binary at block 0 (the archive's own start) of the archive's whole size
+    let entries = [[0, DIRECTORY, 1, 1], [0, 0, total, 0]];
+    let dir = std::env::temp_dir().join(format!("primase-gta-nested-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("temporary folder");
+    std::fs::write(dir.join("self.rpf"), table_only_rpf(&entries, names)).expect("archive");
+    let e = Install::open(&dir, &Keys::none()).unwrap_err();
+    match e {
+        rage_engine_formats::Error::Invalid {
+            format,
+            offset,
+            detail,
+        } => {
+            assert_eq!((format, offset), ("RPF7", 32), "{detail}");
+            assert!(
+                detail.contains("x.rpf") && detail.contains("table of contents"),
+                "{detail}"
+            );
+        }
+        other => panic!("{other}"),
     }
 }

@@ -26,6 +26,25 @@ use crate::{Result, invalid};
 pub const MAGIC: u32 = 0x5250_4637;
 const BLOCK: u64 = 512;
 
+/// The longest entry name read, in bytes (the longest a file name can be on NTFS). Entries may share one name in the
+/// name table, so without a limit a long name would be copied once per entry.
+pub const MAX_NAME_BYTES: usize = 255;
+
+/// The longest path built for an entry, in bytes: the archive's own path, then the names from the root down. A chain
+/// of nested directories makes each path one level longer than its parent's, so without a limit the paths of a table
+/// of `n` entries take memory in proportion to `n` squared. With it, the paths take at most this many bytes per
+/// 16-byte entry.
+pub const MAX_PATH_BYTES: usize = 1024;
+
+/// The byte offset in the physical file of entry `index` of the table of contents of the archive starting at `start`.
+fn entry_offset(start: u64, index: usize) -> u64 {
+    u64::try_from(index)
+        .unwrap_or(u64::MAX)
+        .saturating_mul(16)
+        .saturating_add(16)
+        .saturating_add(start)
+}
+
 /// The cipher on an archive's table of contents (and its encrypted entries), by the header's cipher word.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Encryption {
@@ -189,6 +208,18 @@ impl Archive {
             ));
         }
         let start = block_offset(self.start, block)?;
+        // data lies after the table of contents that names it: an archive starting where its parent does would hold
+        // itself, and be opened inside itself without end
+        if start <= self.start {
+            return Err(invalid(
+                "RPF7",
+                entry_offset(self.start, index),
+                format!(
+                    "{}: a nested archive starts at block {block}, which is inside the table of contents of the archive holding it",
+                    e.path
+                ),
+            ));
+        }
         Self::read(
             f,
             &self.file,
@@ -253,21 +284,43 @@ impl Archive {
         if count == 0 {
             return Err(invalid("RPF7", start, format!("{path}: no root directory")));
         }
-        let name_at = |o: usize| -> Result<String> {
+        let name_at = |entry: usize, o: usize| -> Result<String> {
+            let at = entry_offset(start, entry);
             let rest = names.get(o..).ok_or_else(|| {
                 invalid(
                     "RPF7",
-                    start,
-                    format!("{path}: name offset {o} past the name table"),
+                    at,
+                    format!(
+                        "{path}: entry {entry}: name offset {o} past the {}-byte name table",
+                        names.len()
+                    ),
                 )
             })?;
-            let end = rest
-                .iter()
-                .position(|&c| c == 0)
-                .ok_or_else(|| invalid("RPF7", start, format!("{path}: name at {o} not terminated")))?;
+            let end = rest.iter().position(|&c| c == 0).ok_or_else(|| {
+                invalid(
+                    "RPF7",
+                    at,
+                    format!("{path}: entry {entry}: the name at {o} is not NUL-terminated"),
+                )
+            })?;
             let (name, _) = rest.split_at(end);
-            String::from_utf8(name.to_vec())
-                .map_err(|_| invalid("RPF7", start, format!("{path}: name at {o} is not UTF-8")))
+            if name.len() > MAX_NAME_BYTES {
+                return Err(invalid(
+                    "RPF7",
+                    at,
+                    format!(
+                        "{path}: name of entry {entry} is {} bytes, at most {MAX_NAME_BYTES}",
+                        name.len()
+                    ),
+                ));
+            }
+            String::from_utf8(name.to_vec()).map_err(|_| {
+                invalid(
+                    "RPF7",
+                    at,
+                    format!("{path}: entry {entry}: the name at {o} is not UTF-8"),
+                )
+            })
         };
         let mut kinds = Vec::with_capacity(count);
         let mut raw_names = Vec::with_capacity(count);
@@ -287,8 +340,8 @@ impl Archive {
                 if enc > 1 {
                     return Err(invalid(
                         "RPF7",
-                        start,
-                        format!("{path}: entry {i} cipher flag {enc}"),
+                        entry_offset(start, i),
+                        format!("{path}: entry {i} cipher flag {enc}, expected 0 or 1"),
                     ));
                 }
                 (
@@ -322,12 +375,14 @@ impl Archive {
                 )
             };
             let name_off = usize::try_from(name_off).map_err(|_| size_err())?;
-            raw_names.push(name_at(name_off)?);
+            raw_names.push(name_at(i, name_off)?);
             kinds.push(kind);
         }
         // the directory tree: every entry but the root is the child of exactly one directory; the entries are in
         // range by construction (count of each), so a miss is the table's error
-        let bad = |what: String| invalid("RPF7", start, format!("{path}: {what}"));
+        let bad = |entry: usize, what: String| {
+            invalid("RPF7", entry_offset(start, entry), format!("{path}: {what}"))
+        };
         let mut parent: Vec<Option<usize>> = vec![None; count];
         let mut order = vec![0usize];
         let mut paths = vec![String::new(); count];
@@ -344,19 +399,34 @@ impl Archive {
             let end = first
                 .checked_add(n)
                 .filter(|&end| end <= count && first > 0)
-                .ok_or_else(|| bad(format!("directory {d} children {first}+{n} out of range")))?;
+                .ok_or_else(|| {
+                    bad(
+                        d,
+                        format!("directory {d} has children {first}+{n}, expected a range inside the {count} entries after the root"),
+                    )
+                })?;
             for c in first..end {
                 let here = paths
                     .get(d)
                     .cloned()
-                    .ok_or_else(|| bad(format!("directory {d}")))?;
-                let name = raw_names.get(c).ok_or_else(|| bad(format!("entry {c}")))?;
+                    .ok_or_else(|| bad(d, format!("directory {d}")))?;
+                let name = raw_names.get(c).ok_or_else(|| bad(c, format!("entry {c}")))?;
                 match parent.get_mut(c) {
                     Some(p @ None) => *p = Some(d),
-                    _ => return Err(bad(format!("entry {c} has two parents"))),
+                    _ => return Err(bad(c, format!("entry {c} is a child of two directories"))),
+                }
+                let full = format!("{here}\\{}", name.to_lowercase());
+                if full.len() > MAX_PATH_BYTES {
+                    return Err(bad(
+                        c,
+                        format!(
+                            "path of entry {c} is {} bytes, at most {MAX_PATH_BYTES} bytes",
+                            full.len()
+                        ),
+                    ));
                 }
                 if let Some(p) = paths.get_mut(c) {
-                    *p = format!("{here}\\{}", name.to_lowercase());
+                    *p = full;
                 }
                 order.push(c);
             }
@@ -367,13 +437,12 @@ impl Archive {
             .position(Option::is_none)
             .map(|c| c.saturating_add(1))
         {
-            return Err(invalid(
-                "RPF7",
-                start,
-                format!("{path}: entry {orphan} is in no directory"),
+            return Err(bad(
+                orphan,
+                format!("entry {orphan} is in no directory, expected every entry but the root in one"),
             ));
         }
-        for k in &kinds {
+        for (i, k) in kinds.iter().enumerate() {
             let (block, stored) = match *k {
                 EntryKind::Binary {
                     block, stored, size, ..
@@ -386,10 +455,11 @@ impl Archive {
                 .and_then(|o| o.checked_add(u64::from(stored)))
                 .is_none_or(|end| end > size)
             {
-                return Err(invalid(
-                    "RPF7",
-                    start,
-                    format!("{path}: entry data runs past the archive"),
+                return Err(bad(
+                    i,
+                    format!(
+                        "data of entry {i} (block {block}, {stored} bytes) runs past the {size}-byte archive"
+                    ),
                 ));
             }
         }
