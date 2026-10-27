@@ -2,8 +2,8 @@
 //!
 //! Read from a decoded META root ([`crate::meta::Meta::root`]) by field name; a missing field or one of another
 //! kind is an error. Values are kept as the files store them (flags, enums and hashes raw); what they mean is for the
-//! caller. Parts the first milestone does not use (occluders, grass, lights, car generators, interiors'
-//! rooms and portals, extensions) stay in the META tree.
+//! caller. Parts this module does not decode (occluders, grass, lights, car generators, interiors'
+//! rooms and portals, extensions) stay in the META tree for the caller to read.
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -63,6 +63,7 @@ pub struct EntityDef {
 }
 
 impl EntityDef {
+    /// Reads an entity (`CEntityDef`) or an interior instance (`CMloInstanceDef`) from its decoded META structure.
     pub fn from_struct(s: &Struct) -> Result<Self> {
         let kind = match name_is(s, &["CEntityDef", "CMloInstanceDef"])? {
             0 => EntityKind::Entity,
@@ -106,6 +107,7 @@ pub struct MapData {
 }
 
 impl MapData {
+    /// Reads a map (`CMapData`) from the root of its decoded META document.
     pub fn from_root(s: &Struct) -> Result<Self> {
         let h = MapHeader::from_root(s)?;
         Ok(MapData {
@@ -144,6 +146,7 @@ impl MapHeader {
         MapContent::from_flags(self.content_flags)
     }
 
+    /// Reads the header of a map (`CMapData`) from the root of its decoded META document.
     pub fn from_root(s: &Struct) -> Result<Self> {
         name_is(s, &["CMapData"])?;
         Ok(MapHeader {
@@ -259,6 +262,7 @@ pub struct Interior {
 }
 
 impl ArchetypeDef {
+    /// Reads an archetype (`CBaseArchetypeDef`, `CTimeArchetypeDef` or `CMloArchetypeDef`) from its decoded META structure.
     pub fn from_struct(s: &Struct) -> Result<Self> {
         let kind = match name_is(s, &["CBaseArchetypeDef", "CTimeArchetypeDef", "CMloArchetypeDef"])? {
             0 => ArchetypeKind::Base,
@@ -312,6 +316,7 @@ pub struct MapTypes {
 }
 
 impl MapTypes {
+    /// Reads a map-types document (`CMapTypes`) from the root of its decoded META document.
     pub fn from_root(s: &Struct) -> Result<Self> {
         name_is(s, &["CMapTypes"])?;
         Ok(MapTypes {

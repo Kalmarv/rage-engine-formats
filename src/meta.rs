@@ -28,23 +28,37 @@ const ARRAY_INFO: u32 = 0x100;
 /// A field's kind, as the descriptions code it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
+    /// A boolean.
     Bool,
+    /// A signed 8-bit integer.
     I8,
+    /// An unsigned 8-bit integer.
     U8,
+    /// A signed 16-bit integer.
     I16,
+    /// An unsigned 16-bit integer.
     U16,
+    /// A signed 32-bit integer.
     I32,
+    /// An unsigned 32-bit integer.
     U32,
+    /// A 32-bit float.
     F32,
     /// Three floats (a field reads 12 bytes; array elements are padded to 16).
     Vec3,
+    /// Four floats.
     Vec4,
+    /// A 32-bit name hash.
     Hash,
     /// An enum stored in a byte, an int, or flags in a short or an int (the referenced enum by name).
     ByteEnum,
+    /// An enum stored in an int.
     IntEnum,
+    /// Flags stored in a short, naming an enum.
     ShortFlags,
+    /// Flags stored in an int, naming an enum.
     IntFlags1,
+    /// A second coding of flags stored in an int, naming an enum.
     IntFlags2,
     /// Pointer, count, capacity: elements of the type the array-info field gives.
     Array,
@@ -166,31 +180,41 @@ pub struct Meta {
 /// A decoded value.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    /// A boolean.
     Bool(bool),
+    /// A signed 8-bit integer.
     I8(i8),
+    /// An unsigned 8-bit integer.
     U8(u8),
+    /// A signed 16-bit integer.
     I16(i16),
+    /// An unsigned 16-bit integer.
     U16(u16),
+    /// A signed 32-bit integer.
     I32(i32),
+    /// An unsigned 32-bit integer.
     U32(u32),
+    /// A 32-bit float.
     F32(f32),
+    /// Three floats.
     Vec3([f32; 3]),
+    /// Four floats.
     Vec4([f32; 4]),
+    /// A 32-bit name hash.
     Hash(u32),
     /// An enum or flags value with the enum's name.
-    Enum {
-        enum_name: u32,
-        value: i32,
-    },
+    Enum { enum_name: u32, value: i32 },
     /// A fixed-size character array up to its first NUL.
     Chars(Vec<u8>),
     /// A whole data block's bytes.
     Data(Vec<u8>),
     /// A string (`None` for a null pointer).
     Str(Option<Vec<u8>>),
+    /// An inline structure.
     Struct(Struct),
     /// A pointed-to structure (`None` for a null pointer).
     Pointer(Option<Struct>),
+    /// An array of values.
     Array(Vec<Value>),
 }
 
@@ -967,6 +991,7 @@ impl Struct {
         )
     }
 
+    /// The `u32` field `name`; an error if it is missing or of another kind.
     pub fn u32(&self, name: &str) -> Result<u32> {
         match self.get(name)? {
             Value::U32(v) => Ok(*v),
@@ -974,6 +999,7 @@ impl Struct {
         }
     }
 
+    /// The `i32` field `name`; an error if it is missing or of another kind.
     pub fn i32(&self, name: &str) -> Result<i32> {
         match self.get(name)? {
             Value::I32(v) => Ok(*v),
@@ -981,6 +1007,7 @@ impl Struct {
         }
     }
 
+    /// The `f32` field `name`; an error if it is missing or of another kind.
     pub fn f32(&self, name: &str) -> Result<f32> {
         match self.get(name)? {
             Value::F32(v) => Ok(*v),
@@ -988,6 +1015,7 @@ impl Struct {
         }
     }
 
+    /// The hash field `name`; an error if it is missing or of another kind.
     pub fn hash(&self, name: &str) -> Result<u32> {
         match self.get(name)? {
             Value::Hash(v) => Ok(*v),
@@ -995,6 +1023,7 @@ impl Struct {
         }
     }
 
+    /// The three-float field `name`; an error if it is missing or of another kind.
     pub fn vec3(&self, name: &str) -> Result<[f32; 3]> {
         match self.get(name)? {
             Value::Vec3(v) => Ok(*v),
@@ -1002,6 +1031,7 @@ impl Struct {
         }
     }
 
+    /// The four-float field `name`; an error if it is missing or of another kind.
     pub fn vec4(&self, name: &str) -> Result<[f32; 4]> {
         match self.get(name)? {
             Value::Vec4(v) => Ok(*v),
@@ -1017,6 +1047,7 @@ impl Struct {
         }
     }
 
+    /// The array field `name`; an error if it is missing or of another kind.
     pub fn array(&self, name: &str) -> Result<&[Value]> {
         match self.get(name)? {
             Value::Array(v) => Ok(v),

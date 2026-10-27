@@ -1,8 +1,10 @@
-//! The real-data inputs this crate's tests read, each with what it is, where it comes from and whether the
-//! landing gate needs it (`primase_testdata::inputs!`; README.md here lists them). Integration tests reach it
-//! with `mod inputs;`, unit tests with `#[cfg(test)] #[path = "../tests/inputs/mod.rs"] mod inputs;` in the
-//! crate root, and tests/real_data_inputs.rs checks that every query the crate's sources write is declared
-//! here. Declare an input here when a test first asks for it.
+//! The real-data inputs this crate's tests read, each with what it is, where it comes from and whether a test
+//! fails (instead of skipping) when it is missing and `[run] require = 'gate'` is set. README.md here lists them
+//! (it is generated from this file by `primase_testdata::doc::tables`, and `real_data_inputs_are_declared` fails
+//! when the two disagree). Integration tests reach this module with `mod inputs;`, unit tests with
+//! `#[cfg(test)] #[path = "../tests/inputs/mod.rs"] mod inputs;` in the crate root, and tests/real_data_inputs.rs
+//! checks that every query the crate's sources write is declared here. Declare an input here when a test first
+//! asks for it.
 
 primase_testdata::inputs! {
     games {
@@ -26,7 +28,7 @@ primase_testdata::inputs! {
     oracle_sets {
         CodeWalker = "codewalker" {
             about: "CodeWalker's readings of a GTA V install (archive listings, live-file tables, texture parents, resources, frames, bounds)",
-            source: "independent: CodeWalker.Core 485d56b, through a thin dump harness kept with the private oracle tools",
+            source: "independent: CodeWalker.Core 485d56b, through a small dump program that is not part of this repository",
         },
     }
     declared {
@@ -34,31 +36,31 @@ primase_testdata::inputs! {
             status: Live,
             gate: true,
             about: r#"optional: an independent reader's live-file tables of that install (JSON; schema in `tests/archive_set.rs`)"#,
-            source: r#"independent: CodeWalker.Core 485d56b, through a thin dump harness kept with the private oracle tools"#,
+            source: r#"independent: CodeWalker.Core 485d56b, through a small dump program that is not part of this repository"#,
         },
         Query::Oracle(OracleSet::CodeWalker, Game::Gta, "gtxd.json") => {
             status: Live,
             gate: true,
             about: r#"optional: an independent reader's texture dictionary parents of that install with their source files (JSON; schema in `tests/gtxd.rs`)"#,
-            source: r#"independent: CodeWalker.Core 485d56b, through a thin dump harness kept with the private oracle tools"#,
+            source: r#"independent: CodeWalker.Core 485d56b, through a small dump program that is not part of this repository"#,
         },
         Query::Oracle(OracleSet::CodeWalker, Game::Gta, "listing.jsonl") => {
             status: Live,
             gate: true,
             about: r#"optional: an independent reader's listing of every archive of that install (JSON lines; schema in `tests/census.rs`)"#,
-            source: r#"independent: CodeWalker.Core 485d56b, through a thin dump harness kept with the private oracle tools"#,
+            source: r#"independent: CodeWalker.Core 485d56b, through a small dump program that is not part of this repository"#,
         },
         Query::Oracle(OracleSet::CodeWalker, Game::Gta, "resources") => {
             status: Live,
             gate: true,
             about: r#"optional: a folder of an independent reader's decodings of chosen drawables and texture dictionaries of that install (JSON; schema in `tests/resource_oracle.rs`)"#,
-            source: r#"independent: CodeWalker.Core 485d56b, through a thin dump harness kept with the private oracle tools"#,
+            source: r#"independent: CodeWalker.Core 485d56b, through a small dump program that is not part of this repository"#,
         },
         Query::Oracle(OracleSet::CodeWalker, Game::Gta, "ycd") => {
             status: Live,
             gate: false,
-            about: r#"a folder holding `dictionaries.jsonl`: an independent reader's decoding of every clip dictionary (`.ycd`) of that install, the CodeWalker harness's `batch` mode over the install's `.ycd` list (`DumpYcd`: per animation its frames, duration, bone ids, and per sequence block and bone track the channel types and SHA-256 of the channel values and of the evaluated vectors); the channel decoder's values are checked against it (needs `installs.gta`, `keys.gta`); `tests/ycd_channels.rs`"#,
-            source: r#"independent: CodeWalker.Core 485d56b (GPL-licensed: run as a tool, no code taken), through a thin dump harness kept with the private oracle tools (`batch` mode)"#,
+            about: r#"a folder holding `dictionaries.jsonl`: an independent reader's decoding of every clip dictionary (`.ycd`) of that install, the dump program's `batch` mode over the install's `.ycd` list (`DumpYcd`: per animation its frames, duration, bone ids, and per sequence block and bone track the channel types and SHA-256 of the channel values and of the evaluated vectors); the channel decoder's values are checked against it (needs `installs.gta`, `keys.gta`); `tests/ycd_channels.rs`"#,
+            source: r#"independent: CodeWalker.Core 485d56b (GPL-licensed: run as a tool, no code taken), through a small dump program that is not part of this repository (`batch` mode)"#,
         },
     }
     debug {

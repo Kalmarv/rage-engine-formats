@@ -94,7 +94,7 @@ pub struct Resource {
 /// hundred bytes can describe gigabytes (measured on bounds: a 185-byte body, 1.7 million bounds, 553 MB). A reader
 /// that copies charges what it takes ([`Resource::charge`]) and a read that has taken more than this many times the
 /// resource is refused. A judgement: an object that a real file shares by reference is charged every time it is read,
-/// and the censuses say if any does.
+/// and the real-data census tests (`tests/census.rs`) say if any does.
 pub const SPEND_TIMES: usize = 4;
 
 /// The charge counter of a [`Resource`]: shared by the readers of it, copied with it.
@@ -220,7 +220,7 @@ const ZERO_FILL_LIMIT: usize = 64 << 20;
 /// DEFLATE stream consumed to its end that fills the pages exactly, or ends inside the last page (the rest of that
 /// page is zero-filled and counted in `zero_filled`); anything else is an error. The pages are checked against the
 /// body before anything is allocated for them: they may not need more than the body inflates to (a DEFLATE stream
-/// expands at most [`DEFLATE_MAX_RATIO`] to one) plus [`ZERO_FILL_LIMIT`], and the output grows with the stream.
+/// expands at most [`DEFLATE_MAX_RATIO`] to one) plus 64 MiB (`ZERO_FILL_LIMIT`), and the output grows with the stream.
 pub fn inflate(body: &[u8], system: PageFlags, graphics: PageFlags) -> Result<Resource> {
     let size = system
         .size()

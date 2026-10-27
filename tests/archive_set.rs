@@ -4,7 +4,7 @@
 //! ydr, ydd, yft, ytd, ybn, paths as in the census listing. That reader applies the multiplayer packs' map changes, so
 //! the comparison is with GTA Online's map ([`MapState::Online`]). It follows its own rules where they differ from the
 //! game's mount data (`archive_set`). Every difference is put in one of these named classes and counted; anything else
-//! fails the gate:
+//! fails the test:
 //! - `skipped pack`: our copy is in `patchday27ng`, a pack that reader leaves out on purpose (its source calls this
 //!   a hack against the map breaking: run pack by pack, that pack's story overlays and the multiplayer maps would
 //!   both be live);

@@ -103,6 +103,7 @@ pub struct Element {
 }
 
 impl Element {
+    /// The name of the semantic slot this element fills (`POSITION0`, `NORMAL0`, ...), or a placeholder for a slot outside [`SEMANTICS`].
     pub fn semantic(self) -> &'static str {
         SEMANTICS
             .get(usize::from(self.slot))
@@ -185,7 +186,7 @@ pub struct Param {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shader {
     pub name: u32,
-    /// Legacy's preset (`.sps`) name hash; Enhanced stores 0x6d657461 here for every shader (census), so a shader's
+    /// Legacy's preset (`.sps`) name hash; Enhanced stores 0x6d657461 here for every shader of the install, so a shader's
     /// class comes from its effect name and render bucket.
     pub preset: u32,
     pub render_bucket: u8,

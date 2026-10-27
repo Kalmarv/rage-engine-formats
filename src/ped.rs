@@ -118,6 +118,7 @@ pub struct PedEntry {
 }
 
 impl PedVariations {
+    /// Reads a ped's variation info (`CPedVariationInfo`) from the root of its decoded META document.
     pub fn from_root(s: &Struct) -> Result<PedVariations> {
         named(s, "CPedVariationInfo")?;
         let avail = s.array("availComp")?;

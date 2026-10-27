@@ -22,7 +22,7 @@
 //! second name (0, or the first repeated).
 //!
 //! Everything but the fields named is kept as stored. The counts and sizes are checked against the file; the
-//! census of the shader database holds the records to the programs' own interfaces: every constant
+//! real-data test over the shader database holds the records to the programs' own interfaces: every constant
 //! buffer, texture and sampler a program declares has a record at its register and space, with the buffer's size.
 //! No I/O.
 #![deny(
@@ -293,8 +293,8 @@ pub struct EffectParameter {
 /// type bytes it has. The record's structure around its tables is not read: a parameter record is found by its
 /// shape, a 24-byte record `flags, offset and id, two words, name hash, second name hash` at a 4-byte position whose
 /// name hash is a constant of one of the programs and whose type byte is that constant's. A hash of 32 bits that
-/// two unrelated words share would need a second program constant with the same type byte beside it; the census
-/// holds the result to CodeWalker's parameter list (every parameter it names that a program reads is found).
+/// two unrelated words share would need a second program constant with the same type byte beside it; the real-data
+/// test holds the result to CodeWalker's parameter list (every parameter it names that a program reads is found).
 /// Records whose second name is 0 or the first are not returned.
 pub fn effect_parameters(rest: &[u8], known: &BTreeMap<u32, BTreeSet<u8>>) -> Vec<EffectParameter> {
     let mut out = BTreeSet::new();

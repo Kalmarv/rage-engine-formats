@@ -3,7 +3,7 @@
 //! name the programs each uses. No I/O: the reader hands over bytes. Nothing is copied: programs and effects borrow
 //! the file.
 //!
-//! The layout below was worked out from the file itself (the earlier notes only said where the containers are), and
+//! The layout below was worked out from the file itself, and
 //! the reader holds it to the whole file: it reads to the last byte and refuses what does not fit.
 //!
 //! ```text

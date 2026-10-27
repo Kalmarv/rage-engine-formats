@@ -1,7 +1,7 @@
 //! Enhanced's buffer formats (`sga::BufferFormat`), one byte, used by textures and vertex elements. The codes
 //! follow DXGI's order for the first twenty values, then their own numbering (`B10G10R10A2_UNORM` is 0x15 where DXGI
 //! has 24; `BC1_UNORM` is 0x47 like DXGI's 71). The names below are the codes the game's files use; the
-//! correspondence is checked by census (every texture's data size from its format, size and levels equals its stored
+//! correspondence is checked on real data (every texture's data size from its format, size and levels equals its stored
 //! block count times block size).
 
 /// A buffer format code, as stored.

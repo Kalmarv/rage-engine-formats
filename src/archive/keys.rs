@@ -78,9 +78,14 @@ impl std::fmt::Debug for Keys {
 }
 
 /// File names of the community layout (one folder holding the four files).
+/// File name of the NG keys in the community layout.
+/// File name of the NG keys in the community layout.
 pub const NG_KEY_FILE: &str = "gtav_ng_key.dat";
+/// File name of the NG decrypt tables.
 pub const NG_TABLES_FILE: &str = "gtav_ng_decrypt_tables.dat";
+/// File name of the 256-byte name hash lookup table.
 pub const HASH_LUT_FILE: &str = "gtav_hash_lut.dat";
+/// File name of the AES key (optional).
 pub const AES_KEY_FILE: &str = "gtav_aes_key.dat";
 
 const NG_KEY_BYTES: usize = 68 * 4;

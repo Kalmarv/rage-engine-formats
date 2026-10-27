@@ -254,7 +254,9 @@ pub const LEVEL: &str = "MO_JIM_L11";
 /// anything belongs to a multiplayer pack).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MapState {
+    /// Story mode's map.
     Story,
+    /// GTA Online's map.
     Online,
 }
 
@@ -408,6 +410,9 @@ impl Mounts {
 }
 
 impl ArchiveSet {
+    /// Applies the mount rules in the module documentation to `install`, for the map `state`: which archives are mounted and,
+    /// for each file kind and name, the archive holding its live copy. Fails when a mount data file the rules need cannot be read or
+    /// is not one the game's files use.
     pub fn build(install: Install, keys: &Keys, state: MapState) -> Result<Self> {
         let read = |path: &str| -> Result<Vec<u8>> {
             install

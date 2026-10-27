@@ -1,6 +1,10 @@
 [package]
 name = "rage-engine-formats"
-description = "RAGE engine formats as GTA V Enhanced stores them: RPF7 archives, resources, META, drawables, textures, collision bounds, clips, shader containers, RBF and XML"
+description = "Readers for the RAGE engine's GTA V file formats: RPF7 archives, resources, META, drawables, textures, collision bounds, clips and shader containers"
+documentation = "https://docs.rs/rage-engine-formats"
+readme = "README.md"
+keywords = ["gta5", "rage-engine", "rpf", "game-assets", "parser"]
+categories = ["parser-implementations", "game-development"]
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

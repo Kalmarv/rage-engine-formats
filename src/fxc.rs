@@ -1,5 +1,5 @@
 //! RAGE's compiled effect files (`.fxc`, magic `rgxe`) as GTA V Legacy stores them (the Enhanced edition ships no
-//! `.fxc`: its programs are one `SGD2` container, [`super::sgd2`]; a census of this reader needs a Legacy install): the effect's preset parameters, the
+//! `.fxc`: its programs are one `SGD2` container, [`super::sgd2`]): the effect's preset parameters, the
 //! shader programs of its six stages (each a Direct3D container, DXBC on the Legacy edition and DXIL on Enhanced), the
 //! constant buffers and variables they use, and the techniques that pick programs for a draw. No I/O: the reader
 //! hands over bytes.
@@ -7,7 +7,7 @@
 //! Byte order is little endian. A string is one length byte (which counts a terminating zero) then that many bytes; a
 //! length of zero is the empty string. The file is read to its end: bytes after the last technique are an error, not
 //! skipped. What the format means beyond its layout (which variables are material parameters, what a preset is for)
-//! is the binding rules', not this reader's, so every field is kept as stored.
+//! is for the caller, not this reader, so every field is kept as stored.
 //!
 //! The layout is the format as CodeWalker.Core (`FxcFile`) reads it; the facts are the layout, no code is shared.
 #![deny(
@@ -27,14 +27,21 @@ const CONTAINER_MAGIC: u32 = 0x4342_5844;
 /// The stages of an effect, in the order the file lists their groups.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ProgramStage {
+    /// The vertex shader stage.
     Vertex,
+    /// The pixel shader stage.
     Pixel,
+    /// The compute shader stage.
     Compute,
+    /// The domain shader stage.
     Domain,
+    /// The geometry shader stage.
     Geometry,
+    /// The hull shader stage.
     Hull,
 }
 impl ProgramStage {
+    /// Every stage, in file order.
     pub const ALL: [ProgramStage; 6] = [
         ProgramStage::Vertex,
         ProgramStage::Pixel,
@@ -92,12 +99,16 @@ pub struct ConstantBuffer {
 /// A parameter of a variable.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamValue {
+    /// An integer.
     Int(i32),
+    /// A float.
     Float(f32),
+    /// A string.
     Text(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// A named parameter of a variable, as stored.
 pub struct VariableParam {
     pub name: String,
     pub value: ParamValue,
@@ -130,6 +141,7 @@ pub struct Pass {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A named technique: the passes it draws with.
 pub struct Technique {
     pub name: String,
     pub passes: Vec<Pass>,

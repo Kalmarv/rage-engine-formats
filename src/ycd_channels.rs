@@ -38,7 +38,7 @@
 //! result is normalised.
 //!
 //! The layout is CodeWalker's (its `Sequence.ParseData` and `AnimChannel` classes, GPL-licensed: read as a description
-//! of the data and run as the oracle the tests compare with, not copied); this decoder is written from that description
+//! of the data, and run as the reference the real-data tests compare with; no code is copied); this decoder is written from that description
 //! and held to the file: every offset must land inside the sequence's data, the parameter bytes must end where the
 //! frame data begins, the channel lists where the root motion references begin, and the references at the data's end.
 #![deny(
@@ -71,14 +71,23 @@ fn as_usize(v: u32) -> Result<usize> {
 /// The nine channel types, in the order the lists are stored.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChannelKind {
+    /// Type 0: one quaternion (x, y, z) for the whole sequence.
     StaticQuaternion,
+    /// Type 1: one vector of three floats for the whole sequence.
     StaticVector3,
+    /// Type 2: one float for the whole sequence.
     StaticFloat,
+    /// Type 3: a float per frame, stored raw.
     RawFloat,
+    /// Type 4: a float per frame, quantised.
     QuantizeFloat,
+    /// Type 5: a float per frame, quantised through a table of values.
     IndirectQuantizeFloat,
+    /// Type 6: a float per frame, from per-chunk start values and deltas.
     LinearFloat,
+    /// Type 7: the quaternion component a track does not store (see the module documentation).
     CachedQuaternion1,
+    /// Type 8: as type 7, in a track that stores all four components too.
     CachedQuaternion2,
 }
 
@@ -116,19 +125,15 @@ impl ChannelKind {
 pub enum Channel {
     /// A quaternion's x, y, z as stored; w is [`root_of_rest`] of them.
     StaticQuaternion([f32; 3]),
+    /// A vector of three floats, constant over the sequence.
     StaticVector3([f32; 3]),
+    /// A float, constant over the sequence.
     StaticFloat(f32),
     /// A float a frame of the sequence's span, decoded from a raw, quantised, indirect or linear channel (`kind`).
-    Frames {
-        kind: ChannelKind,
-        values: Vec<f32>,
-    },
+    Frames { kind: ChannelKind, values: Vec<f32> },
     /// The component (0 to 3: x, y, z, w) of a quaternion the track derives from its first three channels; `kind` is
     /// [`ChannelKind::CachedQuaternion1`] or [`ChannelKind::CachedQuaternion2`].
-    Cached {
-        kind: ChannelKind,
-        component: u8,
-    },
+    Cached { kind: ChannelKind, component: u8 },
 }
 
 /// `sqrt(max(1 - x² - y² - z², 0))`: the component a unit quaternion's other three leave.

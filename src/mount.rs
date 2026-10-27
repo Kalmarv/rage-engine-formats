@@ -81,6 +81,7 @@ pub struct Setup {
     pub groups: Vec<(String, Vec<String>)>,
 }
 
+/// Reads a pack's `setup2.xml`; `what` names the file in error messages.
 pub fn setup(bytes: &[u8], what: &str) -> Result<Setup> {
     let r = parse(bytes, what)?;
     r.only(
@@ -166,6 +167,7 @@ pub struct Content {
     pub change_sets: Vec<ChangeSet>,
 }
 
+/// Reads a pack's content file (its data files and change sets); `what` names the file in error messages.
 pub fn content(bytes: &[u8], what: &str) -> Result<Content> {
     let r = parse(bytes, what)?;
     r.only(

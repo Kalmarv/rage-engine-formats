@@ -3,7 +3,7 @@
 //! Oracle (`oracles.codewalker.gta/gtxd.json`): JSON `{parents: {child hash: parent hash}, sources: {path: [[child,
 //! parent], ...]}}`, `sources` listing every gtxd file and `vehicles.meta` of the install with its pairs. That reader
 //! also takes the vehicles' texture dictionary pairs from `vehicles.meta` (named class `vehicles`: they are vehicle
-//! data, read with the vehicles); every other difference fails the gate.
+//! data, read with the vehicles); every other difference fails the test.
 //!
 //! Needs `installs.gta` and `keys.gta`.
 mod inputs;

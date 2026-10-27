@@ -30,7 +30,7 @@
 //! The enumerations are Direct3D 12's (blend factors ZERO = 1, ONE = 2, ..., INV_SRC_ALPHA = 6; comparison functions
 //! NEVER = 1, LESS = 2, ..., GREATER = 5, ALWAYS = 8; address modes WRAP = 1, MIRROR = 2, CLAMP = 3), which the records'
 //! values fit on every record of the shader database (checked over every one). That the pass record's bytes 8, 9
-//! and 10 index the rasterizer, depth-stencil and blend tables is the census's finding: over the effects with two or
+//! and 10 index the rasterizer, depth-stencil and blend tables was found by checking the real-data files: over the effects with two or
 //! more records of a table, the values of the byte are exactly the indices of the table, each used and none past it.
 //!
 //! The tables are found from the technique table, the one place in the record that says what it is: the position

@@ -1,7 +1,7 @@
 //! Collision bounds (`phBound`), as ybn files and drawables store them: every bound's header raw, composites with
 //! their children's transforms and flags, geometry with its vertices (quantised, read as positions in the bound's
 //! space), polygons (triangles, spheres, capsules, boxes, cylinders) and per-polygon materials. The layout is the one
-//! community tools document; the census checks it against the install.
+//! community tools document; the real-data tests check it against an install.
 //!
 //! Layout (offsets from the bound): resource file header (16), kind 0x10, sphere radius 0x14, box max 0x20, margin
 //! 0x2C, box min 0x30, box centre 0x40, material index 0x4C, sphere centre 0x50, volume 0x6C. Geometry (kinds 4 and
@@ -51,22 +51,14 @@ pub enum Polygon {
         edges: [i16; 3],
         area: f32,
     },
-    Sphere {
-        centre: u16,
-        radius: f32,
-    },
-    Capsule {
-        ends: [u16; 2],
-        radius: f32,
-    },
+    /// A sphere: its centre vertex and radius.
+    Sphere { centre: u16, radius: f32 },
+    /// A capsule: the vertices of its two ends and its radius.
+    Capsule { ends: [u16; 2], radius: f32 },
     /// Four vertices: the corners of a box (three diagonally opposite pairs' ends).
-    Box {
-        corners: [i16; 4],
-    },
-    Cylinder {
-        ends: [u16; 2],
-        radius: f32,
-    },
+    Box { corners: [i16; 4] },
+    /// A cylinder: the vertices of its two ends and its radius.
+    Cylinder { ends: [u16; 2], radius: f32 },
 }
 
 /// A geometry bound's contents.
@@ -108,7 +100,9 @@ pub struct Bound {
 pub enum Contents {
     /// A sphere, capsule, box, disc or cylinder: its shape is the header's.
     Primitive,
+    /// A mesh of polygons.
     Geometry(Geometry),
+    /// Child bounds with their transforms.
     Composite(Vec<Child>),
     /// A kind this reader does not read (cloth), kept as its header.
     Other,
