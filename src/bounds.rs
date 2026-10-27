@@ -14,9 +14,9 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::le;
-use crate::rage::le::LE;
-use crate::rage::resource::Resource;
+use crate::le;
+use crate::le::LE;
+use crate::resource::Resource;
 use crate::{Result, invalid};
 use primase_foundations::bytes::View;
 
@@ -385,7 +385,7 @@ mod polygon_tests {
 )]
 mod budget_tests {
     use super::*;
-    use crate::rage::resource::PageFlags;
+    use crate::resource::PageFlags;
 
     /// A resource of 64 KiB holding nine bounds at 0x100 intervals: bound `k` is a composite of `fan` children that all
     /// name bound `k + 1`, down to a box (kind 3) at the ninth.

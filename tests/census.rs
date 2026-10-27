@@ -12,9 +12,9 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use primase_gta::read::archive::keys::Keys;
-use primase_gta::read::archive::rpf::{Archive, EntryKind};
 use primase_testdata::{Game, OracleSet, install, keys};
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::archive::rpf::{Archive, EntryKind};
 
 #[derive(serde::Deserialize)]
 struct OracleArchive {
@@ -48,7 +48,7 @@ fn rpf_files(dir: &Path, root: &Path, out: &mut Vec<(PathBuf, String)>) {
 }
 
 /// An entry as the oracle lists it.
-fn listed(a: &Archive, e: &primase_gta::read::archive::rpf::Entry) -> Vec<serde_json::Value> {
+fn listed(a: &Archive, e: &rage_engine_formats::archive::rpf::Entry) -> Vec<serde_json::Value> {
     use serde_json::json;
     match e.kind {
         EntryKind::Directory { .. } => vec![json!(e.path), json!("dir")],
@@ -111,10 +111,10 @@ fn walk(a: &Archive, f: &mut File, keys: &Keys, oracle: &BTreeMap<String, Oracle
         None => {}
         Some(o) => {
             let enc = match a.encryption {
-                primase_gta::read::archive::rpf::Encryption::None => 0x4E45_504F,
-                primase_gta::read::archive::rpf::Encryption::Open => 0x4F50_454E,
-                primase_gta::read::archive::rpf::Encryption::Aes => 0x0FFF_FFF9,
-                primase_gta::read::archive::rpf::Encryption::Ng => 0x0FEF_FFFF,
+                rage_engine_formats::archive::rpf::Encryption::None => 0x4E45_504F,
+                rage_engine_formats::archive::rpf::Encryption::Open => 0x4F50_454E,
+                rage_engine_formats::archive::rpf::Encryption::Aes => 0x0FFF_FFF9,
+                rage_engine_formats::archive::rpf::Encryption::Ng => 0x0FEF_FFFF,
             };
             if (o.file_size, o.start, o.encryption) != (a.size, a.start, enc) {
                 t.fail("archive header differs", a.path.clone());
@@ -171,7 +171,7 @@ fn every_archive_reads_and_every_entry_decodes() {
     let (Some(dir), Some(key_dir)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let filter = primase_testdata::debug("gta.archive_filter")
         .unwrap_or_default()
         .to_lowercase();

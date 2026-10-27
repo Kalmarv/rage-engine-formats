@@ -12,12 +12,12 @@
 use std::collections::BTreeMap;
 use std::fs::File;
 
-use primase_gta::rage::map::MapData;
-use primase_gta::rage::meta::Meta;
-use primase_gta::read::archive::archive_set::MapState;
-use primase_gta::read::archive::archive_set::{ArchiveSet, Install};
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::MapState;
+use rage_engine_formats::archive::archive_set::{ArchiveSet, Install};
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::map::MapData;
+use rage_engine_formats::meta::Meta;
 
 /// Static maps of different packs that author the same placement (ymap names, either order).
 const KNOWN: [(&str, &str); 1] = [("h4_yacht_critical_0.ymap", "hei_ch3_12_critical_0.ymap")];
@@ -38,7 +38,7 @@ fn no_placement_is_live_twice() {
     let (Some(dir), Some(key_dir)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let mut doubled = Vec::new();
     for state in [MapState::Story, MapState::Online] {
         let set = ArchiveSet::build(Install::open(&dir, &keys).expect("install"), &keys, state)

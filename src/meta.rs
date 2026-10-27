@@ -16,7 +16,7 @@
 )]
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::rage::resource::Resource;
+use crate::resource::Resource;
 use crate::{Result, invalid};
 
 /// Built-in type names of primitive data blocks (the field kind codes of their element types).
@@ -205,7 +205,7 @@ fn err(offset: u64, detail: impl ToString) -> crate::Error {
     invalid("META", offset, detail)
 }
 
-use crate::rage::le::LE;
+use crate::le::LE;
 use primase_foundations::bytes::View;
 
 /// `len` bytes of `d` at `offset`, if it holds them.
@@ -326,7 +326,7 @@ impl Meta {
                     .0
                     .iter()
                     .map(|c| {
-                        let [k, v] = crate::rage::le::u32x2_of(c);
+                        let [k, v] = crate::le::u32x2_of(c);
                         (k, i32::from_le_bytes(v.to_le_bytes()))
                     })
                     .collect();
@@ -1056,7 +1056,7 @@ impl Struct {
 )]
 mod tests {
     use super::*;
-    use crate::rage::resource::PageFlags;
+    use crate::resource::PageFlags;
     use primase_foundations::hash::joaat_exact as joaat;
 
     fn put(d: &mut [u8], o: usize, b: &[u8]) {

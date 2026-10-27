@@ -1,8 +1,9 @@
-//! Archive key material supplied by the caller, checked against published SHA-1 digests.
+//! Archive key material supplied by the caller, checked against SHA-1 digests the caller also supplies.
 //!
 //! GTA V Enhanced keeps its archives under the NG cipher, whose keys and tables are not present in the Enhanced
 //! executable in a form a digest search finds; the caller passes them in. The Legacy executable does hold them, and
-//! [`Keys::from_legacy_executable`] finds them there by the published digests.
+//! [`Keys::from_legacy_executable`] finds them there by the digests. This crate holds neither the key material nor
+//! the digests: [`KeyDigests`] is what the caller says the material must hash to.
 #![allow(
     clippy::disallowed_methods,
     clippy::disallowed_types,
@@ -17,13 +18,45 @@ use std::path::Path;
 
 use sha1::{Digest, Sha1};
 
-use crate::read::archive::key_hashes;
 use crate::{Error, Result};
 
 /// One NG key: 17 round keys of four little-endian u32.
 pub type NgKey = [u32; 68];
 /// One NG decrypt round: 16 lookup tables of 256 u32.
 pub type NgRound = [[u32; 256]; 16];
+
+/// SHA-1 digests of the key material, which [`Keys`] checks every part against before using it. They are checksums,
+/// not keys: they cannot decrypt anything.
+#[derive(Clone, Copy, Debug)]
+pub struct KeyDigests<'a> {
+    /// The 101 NG keys' digests, in key order.
+    pub ng_keys: &'a [[u8; 20]],
+    /// The NG decrypt tables' digests: 17 rounds of 16 tables, round-major (272).
+    pub ng_decrypt_tables: &'a [[u8; 20]],
+    /// The digest of the 256-byte name hash lookup table.
+    pub hash_lut: [u8; 20],
+    /// The digest of the 32-byte AES key.
+    pub aes_key: [u8; 20],
+}
+
+impl KeyDigests<'_> {
+    fn check_counts(&self) -> Result<()> {
+        if self.ng_keys.len() != NG_KEY_COUNT {
+            return Err(Error::Keys(format!(
+                "{} NG key digests, expected {NG_KEY_COUNT}",
+                self.ng_keys.len()
+            )));
+        }
+        if self.ng_decrypt_tables.len() != NG_ROUNDS * 16 {
+            return Err(Error::Keys(format!(
+                "{} NG decrypt table digests, expected {}",
+                self.ng_decrypt_tables.len(),
+                NG_ROUNDS * 16
+            )));
+        }
+        Ok(())
+    }
+}
 
 /// The key material the archive ciphers need.
 pub struct Keys {
@@ -65,13 +98,17 @@ fn words(bytes: &[u8]) -> impl Iterator<Item = u32> + '_ {
 impl Keys {
     /// From the four parts: 101 NG keys of 272 bytes, 17 x 16 decrypt tables of 1024 bytes, the 256-byte name
     /// lookup table, and optionally the 32-byte AES key (archives under AES only; Enhanced has none).
-    /// Every part must match its published digest.
+    /// With `digests`, every part must match its digest; with `None` the parts are taken as given.
     pub fn from_parts(
         ng_keys: &[u8],
         ng_tables: &[u8],
         hash_lut: &[u8],
         aes_key: Option<&[u8]>,
+        digests: Option<&KeyDigests>,
     ) -> Result<Self> {
+        if let Some(d) = digests {
+            d.check_counts()?;
+        }
         if ng_keys.len() != NG_KEY_COUNT * NG_KEY_BYTES {
             return Err(Error::Keys(format!(
                 "NG keys: {} bytes, expected {}",
@@ -87,17 +124,11 @@ impl Keys {
             )));
         }
         let mut keys = Vec::with_capacity(NG_KEY_COUNT);
-        for (i, (k, want)) in ng_keys
-            .as_chunks::<NG_KEY_BYTES>()
-            .0
-            .iter()
-            .zip(key_hashes::NG_KEYS.iter())
-            .enumerate()
-        {
-            if sha1(k) != *want {
-                return Err(Error::Keys(format!(
-                    "NG key {i} does not match its published digest"
-                )));
+        for (i, k) in ng_keys.as_chunks::<NG_KEY_BYTES>().0.iter().enumerate() {
+            if let Some(d) = digests
+                && d.ng_keys.get(i).is_some_and(|want| sha1(k) != *want)
+            {
+                return Err(Error::Keys(format!("NG key {i} does not match its digest")));
             }
             let mut key = [0u32; 68];
             for (d, s) in key.iter_mut().zip(words(k)) {
@@ -106,25 +137,27 @@ impl Keys {
             keys.push(key);
         }
         let mut tables = Vec::with_capacity(NG_ROUNDS);
-        for (r, (round, wants)) in ng_tables
+        for (r, round) in ng_tables
             .as_chunks::<{ 16 * NG_TABLE_BYTES }>()
             .0
             .iter()
-            .zip(key_hashes::NG_DECRYPT_TABLES.chunks(16))
             .enumerate()
         {
             let mut t = [[0u32; 256]; 16];
-            for (j, ((table, want), out)) in round
+            for (j, (table, out)) in round
                 .as_chunks::<NG_TABLE_BYTES>()
                 .0
                 .iter()
-                .zip(wants)
                 .zip(t.iter_mut())
                 .enumerate()
             {
-                if sha1(table) != *want {
+                if let Some(d) = digests
+                    && d.ng_decrypt_tables
+                        .get(r.saturating_mul(16).saturating_add(j))
+                        .is_some_and(|want| sha1(table) != *want)
+                {
                     return Err(Error::Keys(format!(
-                        "NG decrypt table {r}/{j} does not match its published digest"
+                        "NG decrypt table {r}/{j} does not match its digest"
                     )));
                 }
                 for (d, s) in out.iter_mut().zip(words(table)) {
@@ -139,10 +172,10 @@ impl Keys {
                 hash_lut.len()
             ))
         })?;
-        if sha1(&hash_lut) != key_hashes::HASH_LUT {
-            return Err(Error::Keys(
-                "hash lookup table does not match its published digest".into(),
-            ));
+        if let Some(d) = digests
+            && sha1(&hash_lut) != d.hash_lut
+        {
+            return Err(Error::Keys("hash lookup table does not match its digest".into()));
         }
         let aes_key = match aes_key {
             None => None,
@@ -150,8 +183,10 @@ impl Keys {
                 let a: [u8; 32] = a
                     .try_into()
                     .map_err(|_| Error::Keys(format!("AES key: {} bytes, expected 32", a.len())))?;
-                if sha1(&a) != key_hashes::AES_KEY {
-                    return Err(Error::Keys("AES key does not match its published digest".into()));
+                if let Some(d) = digests
+                    && sha1(&a) != d.aes_key
+                {
+                    return Err(Error::Keys("AES key does not match its digest".into()));
                 }
                 Some(a)
             }
@@ -166,7 +201,7 @@ impl Keys {
 
     /// From a folder in the community layout: `gtav_ng_key.dat`, `gtav_ng_decrypt_tables.dat`,
     /// `gtav_hash_lut.dat` and, if present, `gtav_aes_key.dat`.
-    pub fn from_dir(dir: &Path) -> Result<Self> {
+    pub fn from_dir(dir: &Path, digests: Option<&KeyDigests>) -> Result<Self> {
         let read =
             |name: &str| std::fs::read(dir.join(name)).map_err(|e| Error::Keys(format!("{name}: {e}")));
         let aes = dir.join(AES_KEY_FILE);
@@ -180,12 +215,14 @@ impl Keys {
             &read(NG_TABLES_FILE)?,
             &read(HASH_LUT_FILE)?,
             aes.as_deref(),
+            digests,
         )
     }
 
-    /// Found in the Legacy executable (GTA5.exe) by the published digests (8-byte aligned windows). The Enhanced
-    /// executable does not hold the NG material in this form; this fails naming what is missing.
-    pub fn from_legacy_executable(exe: &[u8]) -> Result<Self> {
+    /// Found in the Legacy executable (GTA5.exe) by the digests (8-byte aligned windows). The Enhanced executable
+    /// does not hold the NG material in this form; this fails naming what is missing.
+    pub fn from_legacy_executable(exe: &[u8], digests: &KeyDigests) -> Result<Self> {
+        digests.check_counts()?;
         let find = |len: usize, wanted: &[[u8; 20]]| -> Vec<Option<Vec<u8>>> {
             let mut found: Vec<Option<Vec<u8>>> = vec![None; wanted.len()];
             for window in exe.windows(len).step_by(8) {
@@ -211,14 +248,14 @@ impl Keys {
             }
             Ok(parts.into_iter().flatten().flatten().collect())
         };
-        let lut = collect("hash lookup tables", find(256, &[key_hashes::HASH_LUT]))?;
-        let aes = find(32, &[key_hashes::AES_KEY]).pop().flatten();
-        let keys = collect("NG keys", find(NG_KEY_BYTES, &key_hashes::NG_KEYS))?;
+        let lut = collect("hash lookup tables", find(256, &[digests.hash_lut]))?;
+        let aes = find(32, &[digests.aes_key]).pop().flatten();
+        let keys = collect("NG keys", find(NG_KEY_BYTES, digests.ng_keys))?;
         let tables = collect(
             "NG decrypt tables",
-            find(NG_TABLE_BYTES, &key_hashes::NG_DECRYPT_TABLES),
+            find(NG_TABLE_BYTES, digests.ng_decrypt_tables),
         )?;
-        Self::from_parts(&keys, &tables, &lut, aes.as_deref())
+        Self::from_parts(&keys, &tables, &lut, aes.as_deref(), Some(digests))
     }
 
     /// No key material: reads archives without a cipher only (an NG or AES archive fails with a message).

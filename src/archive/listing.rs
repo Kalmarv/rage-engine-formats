@@ -4,8 +4,8 @@
 //! of contents' own.
 use std::path::Path;
 
-use crate::read::archive::archive_set::{FileRef, Install};
-use crate::read::archive::rpf::{Archive, Encryption, EntryKind};
+use crate::archive::archive_set::{FileRef, Install};
+use crate::archive::rpf::{Archive, Encryption, EntryKind};
 
 /// How a listed file is stored in its archive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

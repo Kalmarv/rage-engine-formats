@@ -8,10 +8,10 @@
 )]
 /// GTA's resources are little-endian: the byte order of every positional read
 /// (`primase_foundations::bytes::View::new(d).u32(o, LE)`).
-pub(crate) const LE: primase_foundations::bytes::Endian = primase_foundations::bytes::Endian::Little;
+pub const LE: primase_foundations::bytes::Endian = primase_foundations::bytes::Endian::Little;
 
 /// Two little-endian f32 of an 8-byte array.
-pub(crate) fn f32x2_of(c: &[u8; 8]) -> [f32; 2] {
+pub fn f32x2_of(c: &[u8; 8]) -> [f32; 2] {
     let [a0, a1, a2, a3, b0, b1, b2, b3] = *c;
     [
         f32::from_le_bytes([a0, a1, a2, a3]),
@@ -20,7 +20,7 @@ pub(crate) fn f32x2_of(c: &[u8; 8]) -> [f32; 2] {
 }
 
 /// Three little-endian f32 of a 12-byte array.
-pub(crate) fn vec3_of(c: &[u8; 12]) -> [f32; 3] {
+pub fn vec3_of(c: &[u8; 12]) -> [f32; 3] {
     let [a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3] = *c;
     [
         f32::from_le_bytes([a0, a1, a2, a3]),
@@ -30,7 +30,7 @@ pub(crate) fn vec3_of(c: &[u8; 12]) -> [f32; 3] {
 }
 
 /// Four little-endian f32 of a 16-byte array.
-pub(crate) fn vec4_of(c: &[u8; 16]) -> [f32; 4] {
+pub fn vec4_of(c: &[u8; 16]) -> [f32; 4] {
     let [a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3] = *c;
     [
         f32::from_le_bytes([a0, a1, a2, a3]),
@@ -41,7 +41,7 @@ pub(crate) fn vec4_of(c: &[u8; 16]) -> [f32; 4] {
 }
 
 /// Two little-endian u32 of an 8-byte array.
-pub(crate) fn u32x2_of(c: &[u8; 8]) -> [u32; 2] {
+pub fn u32x2_of(c: &[u8; 8]) -> [u32; 2] {
     let [a0, a1, a2, a3, b0, b1, b2, b3] = *c;
     [
         u32::from_le_bytes([a0, a1, a2, a3]),
@@ -50,7 +50,7 @@ pub(crate) fn u32x2_of(c: &[u8; 8]) -> [u32; 2] {
 }
 
 /// Three little-endian u16 of a 6-byte array.
-pub(crate) fn u16x3_of(c: &[u8; 6]) -> [u16; 3] {
+pub fn u16x3_of(c: &[u8; 6]) -> [u16; 3] {
     let [a0, a1, b0, b1, c0, c1] = *c;
     [
         u16::from_le_bytes([a0, a1]),
@@ -60,7 +60,7 @@ pub(crate) fn u16x3_of(c: &[u8; 6]) -> [u16; 3] {
 }
 
 /// Four little-endian u32 of a 16-byte array.
-pub(crate) fn u32x4_of(c: &[u8; 16]) -> [u32; 4] {
+pub fn u32x4_of(c: &[u8; 16]) -> [u32; 4] {
     let [a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3] = *c;
     [
         u32::from_le_bytes([a0, a1, a2, a3]),
@@ -71,7 +71,7 @@ pub(crate) fn u32x4_of(c: &[u8; 16]) -> [u32; 4] {
 }
 
 /// Eight little-endian u16 of a 16-byte array.
-pub(crate) fn u16x8_of(c: &[u8; 16]) -> [u16; 8] {
+pub fn u16x8_of(c: &[u8; 16]) -> [u16; 8] {
     let [a0, a1, b0, b1, c0, c1, d0, d1, e0, e1, f0, f1, g0, g1, h0, h1] = *c;
     [
         u16::from_le_bytes([a0, a1]),

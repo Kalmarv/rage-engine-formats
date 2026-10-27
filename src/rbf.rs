@@ -1,4 +1,4 @@
-//! RBF ("RBF0"): RAGE's binary form of an XML data file, read into the same element tree as [`crate::read::xml`].
+//! RBF ("RBF0"): RAGE's binary form of an XML data file, read into the same element tree as [`crate::xml`].
 //!
 //! After the magic, records follow until the root closes: a descriptor index byte and a type byte. A descriptor
 //! index equal to the number of descriptors so far introduces a new one (a 16-bit name length and the name); its
@@ -12,8 +12,8 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::le::LE;
-use crate::read::xml::Element;
+use crate::le::LE;
+use crate::xml::Element;
 use crate::{Result, invalid};
 use primase_foundations::bytes::{Cursor, Field};
 
@@ -36,7 +36,7 @@ struct Open {
 }
 
 /// Parses an RBF file into its root element.
-pub(crate) fn parse(bytes: &[u8]) -> Result<Element> {
+pub fn parse(bytes: &[u8]) -> Result<Element> {
     if bytes.get(..4) != Some(MAGIC) {
         return Err(err(0, "not RBF0"));
     }
@@ -115,10 +115,10 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Element> {
                         if stack.is_empty() && at != 4 {
                             return Err(err(at, "a second root element"));
                         }
-                        if stack.len() >= super::xml::MAX_DEPTH {
+                        if stack.len() >= crate::xml::MAX_DEPTH {
                             return Err(err(
                                 at,
-                                format!("elements nest deeper than {}", super::xml::MAX_DEPTH),
+                                format!("elements nest deeper than {}", crate::xml::MAX_DEPTH),
                             ));
                         }
                         stack.push(Open {
@@ -195,10 +195,8 @@ mod tests {
             d.extend([0xFF, 0xFF].repeat(depth));
             d
         };
-        assert!(parse(&build(super::super::xml::MAX_DEPTH)).is_ok());
-        let e = parse(&build(super::super::xml::MAX_DEPTH + 1))
-            .unwrap_err()
-            .to_string();
+        assert!(parse(&build(crate::xml::MAX_DEPTH)).is_ok());
+        let e = parse(&build(crate::xml::MAX_DEPTH + 1)).unwrap_err().to_string();
         assert!(e.contains("nest deeper than"), "{e}");
     }
 

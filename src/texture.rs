@@ -10,9 +10,9 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::le::LE;
-use crate::rage::resource::Resource;
-use crate::rage::sga::BufferFormat;
+use crate::le::LE;
+use crate::resource::Resource;
+use crate::sga::BufferFormat;
 use crate::{Result, invalid};
 use primase_foundations::bytes::View;
 
@@ -24,7 +24,7 @@ pub struct Texture {
     pub height: u16,
     pub depth: u16,
     pub levels: u8,
-    /// `rage::sga` image dimension (1: 2D, 2: 3D, 3: cube, as stored).
+    /// `sga` image dimension (1: 2D, 2: 3D, 3: cube, as stored).
     pub dimension: u8,
     pub format: BufferFormat,
     pub tile_mode: u8,
@@ -97,14 +97,14 @@ impl Texture {
     /// The texture at `pointer`, with its data.
     pub fn read(r: &Resource, pointer: u64) -> Result<Texture> {
         let (mut t, data_ptr, blocks, block_size) = Self::read_base(r, pointer)?;
-        let (format, _) = t
+        let texel = t
             .format
-            .texture()
+            .texel()
             .ok_or_else(|| err(pointer, format!("{}: buffer format {:#x}", t.name, t.format.0)))?;
         if t.levels == 0 || t.width == 0 || t.height == 0 || t.depth == 0 {
             return Err(err(pointer, format!("{}: empty size or no levels", t.name)));
         }
-        // a level per halving of the larger side, down to 1 (the bound `primase_core::Texture` holds levels to)
+        // a level per halving of the larger side, down to 1
         let most = t.width.max(t.height).ilog2().saturating_add(1);
         if u32::from(t.levels) > most {
             return Err(err(
@@ -120,7 +120,9 @@ impl Texture {
         let mut size = 0usize;
         for level in 0..u32::from(t.levels) {
             let (w, h) = t.level_sides(level);
-            size = size.checked_add(format.level_size(w, h)).ok_or_else(too_big)?;
+            size = size
+                .checked_add(texel.level_size(w, h).ok_or_else(too_big)?)
+                .ok_or_else(too_big)?;
         }
         let size = size.checked_mul(usize::from(t.depth)).ok_or_else(too_big)?;
         if u64::try_from(size).ok() != u64::from(blocks).checked_mul(u64::from(block_size)) {
@@ -225,7 +227,7 @@ impl TextureDictionary {
 )]
 mod tests {
     use super::*;
-    use crate::rage::resource::PageFlags;
+    use crate::resource::PageFlags;
 
     /// A resource holding one 4 x 4 R8G8B8A8_UNORM texture named `t` at 0x5000_0100 that states `levels` levels, its
     /// block count stating the bytes those levels take (64, 16, then 4 for each further level).

@@ -94,7 +94,7 @@ pub struct Resource {
 /// hundred bytes can describe gigabytes (measured on bounds: a 185-byte body, 1.7 million bounds, 553 MB). A reader
 /// that copies charges what it takes ([`Resource::charge`]) and a read that has taken more than this many times the
 /// resource is refused. A judgement: an object that a real file shares by reference is charged every time it is read,
-/// and the censuses (`tests/resource_census.rs`) say if any does.
+/// and the censuses say if any does.
 pub const SPEND_TIMES: usize = 4;
 
 /// The charge counter of a [`Resource`]: shared by the readers of it, copied with it.
@@ -203,7 +203,7 @@ pub fn header(stored: &[u8]) -> Result<(u32, PageFlags, PageFlags)> {
     let h = stored
         .first_chunk::<16>()
         .ok_or_else(|| invalid("RSC7", 0, "shorter than its header"))?;
-    let [magic, version, system, graphics] = crate::rage::le::u32x4_of(h);
+    let [magic, version, system, graphics] = crate::le::u32x4_of(h);
     if magic != MAGIC {
         return Err(invalid("RSC7", 0, format!("magic {magic:#010x}")));
     }

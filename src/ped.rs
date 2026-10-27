@@ -1,7 +1,7 @@
 //! A ped's variation info (`CPedVariationInfo`, the `.ymt` beside a component ped's `.ydd` and `.yft`): which of the
 //! twelve component slots the ped has, and for each the drawables it offers with their texture variations, as stored.
 //!
-//! Read from a decoded META root ([`crate::rage::meta::Meta::root`]) by field name, as [`crate::rage::map`] reads a
+//! Read from a decoded META root ([`crate::meta::Meta::root`]) by field name, as [`crate::map`] reads a
 //! map; a missing field or one of another kind is an error. The drawables the info names are the entries of the ped's
 //! drawable dictionary, which stores them by the hash of a name the game builds from the slot and the drawable's index
 //! ([`entry_name`]): [`PedVariations::entries`] resolves each against the dictionary's hashes and refuses a drawable
@@ -12,7 +12,7 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::meta::{Struct, Value};
+use crate::meta::{Struct, Value};
 use crate::{Result, invalid};
 
 /// The twelve component slots, in the order `availComp` lists them (the game's `PV_COMP_*`).

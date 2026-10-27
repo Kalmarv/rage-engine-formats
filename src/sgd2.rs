@@ -22,7 +22,7 @@
 //!     u32 (not a record size: the offset of something inside the record)
 //!     six lists, in the group order without the two empty ones: u32 count then count u32 indices into the group's
 //!     programs (vertex, pixel, geometry, domain, hull, compute)
-//!     tables, kept as stored (the state and technique tables of [`crate::rage::sgd2_effect`] among them)
+//!     tables, kept as stored (the state and technique tables of [`crate::sgd2_effect`] among them)
 //!     'proplst', NUL
 //!     u32 count, then count sections: u32 size, size bytes (the root signature tables, kept as stored)
 //!     u32 size, size bytes: the name block, the NUL-terminated names of parameters and techniques (it starts with an
@@ -41,8 +41,8 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::fxc::ProgramStage;
-use crate::rage::le::LE;
+use crate::fxc::ProgramStage;
+use crate::le::LE;
 use crate::{Result, invalid};
 use primase_foundations::bytes::Field;
 

@@ -8,11 +8,11 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::sync::Mutex;
 
-use primase_gta::rage::bounds::{Bound, Contents, Polygon, read_ybn};
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
-use primase_gta::read::archive::rpf::EntryKind;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::archive::rpf::EntryKind;
+use rage_engine_formats::bounds::{Bound, Contents, Polygon, read_ybn};
 
 #[derive(Default)]
 struct Tally {
@@ -60,7 +60,7 @@ fn every_ybn_reads() {
         return;
     };
     let filter = primase_testdata::debug("gta.archive_filter").unwrap_or_default();
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let tally = Mutex::new(Tally::default());
     let next = Mutex::new(0usize);
@@ -101,7 +101,7 @@ fn every_ybn_reads() {
                         }
                         if let Err(err) = result {
                             let key = match err {
-                                primase_gta::Error::Invalid { format, detail, .. } => {
+                                rage_engine_formats::Error::Invalid { format, detail, .. } => {
                                     format!("{format}: {detail}")
                                 }
                                 other => other.to_string(),

@@ -15,7 +15,7 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::le::LE;
+use crate::le::LE;
 use crate::{Result, invalid};
 use primase_foundations::bytes::Field;
 

@@ -1,7 +1,7 @@
 //! The techniques and fixed-function state of an effect of the Enhanced shader database: what follows the six program
-//! lists in an effect record ([`crate::rage::sgd2::Effect::rest`]), the part of it that names the passes the game draws
+//! lists in an effect record ([`crate::sgd2::Effect::rest`]), the part of it that names the passes the game draws
 //! with and the programs of each. The record's other tables (the parameter table of
-//! [`crate::rage::sgd2_table::effect_parameters`], the root signature table and the string tables) are not read here.
+//! [`crate::sgd2_table::effect_parameters`], the root signature table and the string tables) are not read here.
 //!
 //! ```text
 //! (a header of tables kept as stored)
@@ -29,7 +29,7 @@
 //!
 //! The enumerations are Direct3D 12's (blend factors ZERO = 1, ONE = 2, ..., INV_SRC_ALPHA = 6; comparison functions
 //! NEVER = 1, LESS = 2, ..., GREATER = 5, ALWAYS = 8; address modes WRAP = 1, MIRROR = 2, CLAMP = 3), which the records'
-//! values fit on every record of the shader database (`tests/effect_techniques.rs`). That the pass record's bytes 8, 9
+//! values fit on every record of the shader database (checked over every one). That the pass record's bytes 8, 9
 //! and 10 index the rasterizer, depth-stencil and blend tables is the census's finding: over the effects with two or
 //! more records of a table, the values of the byte are exactly the indices of the table, each used and none past it.
 //!

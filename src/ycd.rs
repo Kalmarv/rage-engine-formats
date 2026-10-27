@@ -4,7 +4,7 @@
 //! animations it plays with their time windows and rates.
 //!
 //! The channel data of a sequence is kept as bytes (its header fields as stored): decoding it into values per bone and
-//! frame is [`crate::rage`]'s next step, and the clips' tags and properties are not read (counted). The layout is
+//! frame is this crate's next step, and the clips' tags and properties are not read (counted). The layout is
 //! CodeWalker's (`ClipDictionary`, `Animation`, `Sequence`, `ClipBase`), which the reader holds the file to: every
 //! pointer a block holds is followed and must land inside the resource, every count must fit its capacity, and a
 //! clip's animation must be one of the dictionary's.
@@ -15,8 +15,8 @@
 )]
 use std::collections::BTreeMap;
 
-use crate::rage::le::LE;
-use crate::rage::resource::Resource;
+use crate::le::LE;
+use crate::resource::Resource;
 use crate::{Result, invalid};
 use primase_foundations::bytes::View;
 
@@ -362,7 +362,7 @@ impl ClipDictionary {
 )]
 mod tests {
     use super::*;
-    use crate::rage::resource::PageFlags;
+    use crate::resource::PageFlags;
 
     fn pages(writes: &[(usize, &[u8])]) -> Resource {
         let mut data = vec![0u8; 0x2000];

@@ -4,9 +4,9 @@
 use std::io::Write;
 
 use primase_foundations::compress::{Compressor, Deflate};
-use primase_gta::rage::resource::PageFlags;
-use primase_gta::read::archive::keys::Keys;
-use primase_gta::read::archive::rpf::{Archive, EntryKind};
+use rage_engine_formats::archive::keys::{KeyDigests, Keys};
+use rage_engine_formats::archive::rpf::{Archive, EntryKind};
+use rage_engine_formats::resource::PageFlags;
 
 enum Item {
     Dir(&'static str, Vec<Item>),
@@ -237,14 +237,14 @@ fn a_body_may_end_inside_its_last_page_only() {
     let body = |n: usize| Deflate.compress(&vec![7u8; n]).expect("deflate");
     // ends 100 bytes into the last page: accepted, the rest zero-filled
     let r =
-        primase_gta::rage::resource::inflate(&body(full - last + 100), sys, gfx).expect("short last page");
+        rage_engine_formats::resource::inflate(&body(full - last + 100), sys, gfx).expect("short last page");
     assert_eq!(r.data.len(), full);
     assert_eq!(r.zero_filled as usize, last - 100);
     assert!(r.data[full - last + 100..].iter().all(|&b| b == 0));
     // ends before the last page: refused
-    assert!(primase_gta::rage::resource::inflate(&body(full - last - 1), sys, gfx).is_err());
+    assert!(rage_engine_formats::resource::inflate(&body(full - last - 1), sys, gfx).is_err());
     // longer than the pages: refused
-    assert!(primase_gta::rage::resource::inflate(&body(full + 1), sys, gfx).is_err());
+    assert!(rage_engine_formats::resource::inflate(&body(full + 1), sys, gfx).is_err());
 }
 
 /// The sizes in a file are its words: a body is not made to allocate what it cannot inflate to.
@@ -252,7 +252,7 @@ fn a_body_may_end_inside_its_last_page_only() {
 fn a_size_the_stored_bytes_cannot_inflate_to_is_refused_before_it_is_allocated() {
     // a resource: pages of 512 MiB from a body of a few bytes
     let body = Deflate.compress(&[7u8; 100]).expect("deflate");
-    let e = primase_gta::rage::resource::inflate(&body, PageFlags(12 | 1 << 4), PageFlags(0))
+    let e = rage_engine_formats::resource::inflate(&body, PageFlags(12 | 1 << 4), PageFlags(0))
         .unwrap_err()
         .to_string();
     assert!(e.contains("inflates to at most"), "{e}");
@@ -285,14 +285,82 @@ fn rejects_broken_tables() {
 #[test]
 fn key_material_is_checked() {
     // wrong sizes and wrong contents are refused with a message, never used
-    let e = Keys::from_parts(&[0; 10], &[], &[], None)
+    let digests = KeyDigests {
+        ng_keys: &[[0; 20]; 101],
+        ng_decrypt_tables: &[[0; 20]; 272],
+        hash_lut: [0; 20],
+        aes_key: [0; 20],
+    };
+    let e = Keys::from_parts(&[0; 10], &[], &[], None, Some(&digests))
         .unwrap_err()
         .to_string();
     assert!(e.contains("NG keys"), "{e}");
-    let e = Keys::from_parts(&[0; 101 * 272], &[0; 17 * 16 * 1024], &[0; 256], None)
+    let e = Keys::from_parts(
+        &[0; 101 * 272],
+        &[0; 17 * 16 * 1024],
+        &[0; 256],
+        None,
+        Some(&digests),
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(e.contains("NG key 0 does not match"), "{e}");
+}
+
+/// Key material of the right sizes is accepted when it hashes to the digests it is given, refused once a byte differs,
+/// and taken as given without digests; the name hash and the NG key choice come from the lookup table the caller
+/// supplied. Oracle: SHA-1 computed here over the material built here.
+#[test]
+fn key_material_matches_the_digests_it_is_given() {
+    use sha1::{Digest, Sha1};
+    let sha = |b: &[u8]| -> [u8; 20] { Sha1::digest(b).into() };
+    let fill = |n: usize, salt: u8| -> Vec<u8> { (0..n).map(|i| (i as u8).wrapping_mul(7) ^ salt).collect() };
+    let (ng, tables, lut) = (fill(101 * 272, 1), fill(17 * 16 * 1024, 2), fill(256, 3));
+    let ng_digests: Vec<[u8; 20]> = ng.chunks(272).map(sha).collect();
+    let table_digests: Vec<[u8; 20]> = tables.chunks(1024).map(sha).collect();
+    let digests = KeyDigests {
+        ng_keys: &ng_digests,
+        ng_decrypt_tables: &table_digests,
+        hash_lut: sha(&lut),
+        aes_key: [0; 20],
+    };
+    let keys = Keys::from_parts(&ng, &tables, &lut, None, Some(&digests)).expect("matching material");
+    let unchecked = Keys::from_parts(&ng, &tables, &lut, None, None).expect("no digests");
+    assert_eq!(keys.name_hash("x64a.rpf"), unchecked.name_hash("x64a.rpf"));
+    // the name hash reads the lookup table: one mixing step of a one-character name
+    let t = 1025u32.wrapping_mul(u32::from(lut[usize::from(b'a')]));
+    let h = (t >> 6) ^ t;
+    let n = 9u32.wrapping_mul(h);
+    assert_eq!(keys.name_hash("a"), 32769u32.wrapping_mul((n >> 11) ^ n));
+    let mut bad_tables = tables.clone();
+    bad_tables[17 * 1024 + 5] ^= 1;
+    let e = Keys::from_parts(&ng, &bad_tables, &lut, None, Some(&digests))
         .unwrap_err()
         .to_string();
-    assert!(e.contains("NG key 0 does not match"), "{e}");
+    assert!(e.contains("NG decrypt table 1/1 does not match"), "{e}");
+    let mut bad_lut = lut.clone();
+    bad_lut[0] ^= 1;
+    let e = Keys::from_parts(&ng, &tables, &bad_lut, None, Some(&digests))
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("hash lookup table does not match"), "{e}");
+    // an AES key checked against the digest given for it
+    let aes = [9u8; 32];
+    let with_aes = KeyDigests {
+        aes_key: sha(&aes),
+        ..digests
+    };
+    assert!(Keys::from_parts(&ng, &tables, &lut, Some(&aes), Some(&with_aes)).is_ok());
+    let e = Keys::from_parts(&ng, &tables, &lut, Some(&aes), Some(&digests))
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("AES key does not match"), "{e}");
+    // a digest list of the wrong length is refused before any part is read
+    let short = KeyDigests {
+        ng_keys: &ng_digests[..100],
+        ..digests
+    };
+    assert!(Keys::from_parts(&ng, &tables, &lut, None, Some(&short)).is_err());
 }
 
 /// The install's listing over archives written here: a nested archive is an archive of its own and a file of its
@@ -300,8 +368,8 @@ fn key_material_is_checked() {
 /// Oracle: the layout written here, and the inputs it was written from.
 #[test]
 fn the_listing_names_every_archive_and_file_with_its_storage() {
-    use primase_gta::read::archive::archive_set::Install;
-    use primase_gta::read::archive::listing::Storage;
+    use rage_engine_formats::archive::archive_set::Install;
+    use rage_engine_formats::archive::listing::Storage;
     let sys = PageFlags(4 | 1 << 27);
     let inner = write_rpf(vec![Item::Stored("Inner.TXT", b"inside".to_vec())]);
     let text: Vec<u8> = b"the quick brown fox ".repeat(100);

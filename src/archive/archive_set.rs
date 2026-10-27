@@ -33,9 +33,9 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 
-use crate::read::archive::keys::Keys;
-use crate::read::archive::rpf::{Archive, EntryKind};
-use crate::read::mount::{self, Content, Setup};
+use crate::archive::keys::Keys;
+use crate::archive::rpf::{Archive, EntryKind};
+use crate::mount::{self, Content, Setup};
 use crate::{Result, invalid};
 
 /// A file of the install: archive index and entry index.
@@ -153,14 +153,14 @@ impl Install {
     }
 
     /// A binary file as its archive stores it, decrypted: a compressed file's raw deflate stream with the size it
-    /// inflates to, or an uncompressed file's contents with `None` ([`Archive::stored`](crate::read::archive::rpf::Archive::stored)).
+    /// inflates to, or an uncompressed file's contents with `None` ([`Archive::stored`](crate::archive::rpf::Archive::stored)).
     pub fn stored(&self, f: FileRef, keys: &Keys) -> Result<(Vec<u8>, Option<usize>)> {
         let a = &self.archives[f.archive];
         a.stored(&mut File::open(&a.file)?, f.entry, keys)
     }
 
     /// A resource file (RSC7), decoded.
-    pub fn resource(&self, f: FileRef, keys: &Keys) -> Result<crate::rage::resource::Resource> {
+    pub fn resource(&self, f: FileRef, keys: &Keys) -> Result<crate::resource::Resource> {
         let a = &self.archives[f.archive];
         a.resource(&mut File::open(&a.file)?, f.entry, keys)
     }
@@ -650,15 +650,14 @@ impl ArchiveSet {
     }
 }
 
-#[cfg(test)]
 impl ArchiveSet {
-    /// A made-up archive set for tests: one archive (`test.rpf`, never opened) holding a file at each of `paths`, and
-    /// the live tables `live` naming them (extension, name hash, index into `paths`). Sets made from the same `paths`
-    /// are over one install.
-    pub(crate) fn made_up(paths: &[&str], live: &[(&str, u32, usize)]) -> ArchiveSet {
-        let entries: Vec<crate::read::archive::rpf::Entry> = paths
+    /// An archive set that is not over an install, for code that consumes one: a single archive (`test.rpf`, never
+    /// opened) holding a file at each of `paths`, and the live tables `live` naming them (extension, name hash, index
+    /// into `paths`). Sets made from the same `paths` are over one install.
+    pub fn synthetic(paths: &[&str], live: &[(&str, u32, usize)]) -> ArchiveSet {
+        let entries: Vec<crate::archive::rpf::Entry> = paths
             .iter()
-            .map(|p| crate::read::archive::rpf::Entry {
+            .map(|p| crate::archive::rpf::Entry {
                 name: p.rsplit('\\').next().unwrap_or(p).to_string(),
                 path: p.to_string(),
                 kind: EntryKind::Binary {
@@ -675,7 +674,7 @@ impl ArchiveSet {
             size: 0,
             name: "test.rpf".into(),
             path: "test.rpf".into(),
-            encryption: crate::read::archive::rpf::Encryption::None,
+            encryption: crate::archive::rpf::Encryption::None,
             entries,
         };
         let mut tables: BTreeMap<String, BTreeMap<u32, FileRef>> = BTreeMap::new();

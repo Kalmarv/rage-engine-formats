@@ -16,11 +16,11 @@
 //! Needs the GTA install and its key material; the comparison also the oracle.
 use std::collections::{BTreeMap, HashMap};
 
-use primase_gta::rage::ycd::{Animation, ClipDictionary};
-use primase_gta::rage::ycd_channels::{Block, Channel, ChannelKind, Track, root_of_rest};
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, OracleSet, install, keys, oracle};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::ycd::{Animation, ClipDictionary};
+use rage_engine_formats::ycd_channels::{Block, Channel, ChannelKind, Track, root_of_rest};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -238,7 +238,7 @@ fn every_animation_decodes() {
     let (Some(dir), Some(keys)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&keys).expect("key material");
+    let keys = Keys::from_dir(&keys, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let mut oracle_lines: HashMap<String, Value> = HashMap::new();
     if let Some(folder) = oracle(OracleSet::CodeWalker, Game::Gta, "ycd") {

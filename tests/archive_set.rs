@@ -17,10 +17,10 @@
 //! Needs `installs.gta` and `keys.gta`.
 use std::collections::{BTreeMap, BTreeSet};
 
-use primase_gta::read::archive::archive_set::MapState;
-use primase_gta::read::archive::archive_set::{ArchiveSet, Install};
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, OracleSet, install, keys, oracle};
+use rage_engine_formats::archive::archive_set::MapState;
+use rage_engine_formats::archive::archive_set::{ArchiveSet, Install};
+use rage_engine_formats::archive::keys::Keys;
 
 #[test]
 fn live_files_against_the_oracle() {
@@ -31,7 +31,7 @@ fn live_files_against_the_oracle() {
     ) else {
         return;
     };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let set = ArchiveSet::build(
         Install::open(&dir, &keys).expect("install"),
         &keys,

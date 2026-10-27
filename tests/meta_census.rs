@@ -9,12 +9,12 @@ use std::fs::File;
 use std::sync::Mutex;
 
 use primase_foundations::hash::joaat_exact;
-use primase_gta::rage::map::{MapData, MapTypes};
-use primase_gta::rage::meta::Meta;
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
-use primase_gta::read::archive::rpf::EntryKind;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::archive::rpf::EntryKind;
+use rage_engine_formats::map::{MapData, MapTypes};
+use rage_engine_formats::meta::Meta;
 
 /// The enums `map` documents, value by value, as the files' enum descriptions must name them.
 const ENUMS: [(&str, &[&str]); 3] = [
@@ -52,7 +52,7 @@ const ENUMS: [(&str, &[&str]); 3] = [
 ];
 
 /// Fails when one of [`ENUMS`] is described with other values.
-fn check_enums(m: &Meta) -> primase_gta::Result<()> {
+fn check_enums(m: &Meta) -> rage_engine_formats::Result<()> {
     for (name, values) in ENUMS {
         let Some(e) = m.enums.get(&joaat_exact(name.as_bytes())) else {
             continue;
@@ -63,7 +63,7 @@ fn check_enums(m: &Meta) -> primase_gta::Result<()> {
             .map(|(i, v)| (joaat_exact(v.as_bytes()), i as i32))
             .collect();
         if e.values != want {
-            return Err(primase_gta::Error::Invalid {
+            return Err(rage_engine_formats::Error::Invalid {
                 format: "META",
                 offset: 0,
                 detail: format!("{name} described with other values"),
@@ -87,7 +87,7 @@ fn every_ymap_and_ytyp_decodes() {
     let (Some(dir), Some(key_dir)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let tally = Mutex::new(Tally::default());
     let next = Mutex::new(0usize);
@@ -143,7 +143,7 @@ fn every_ymap_and_ytyp_decodes() {
                         *t.read.entry(ext.to_string()).or_default() += 1;
                         if let Err(err) = result {
                             let key = match err {
-                                primase_gta::Error::Invalid { format, detail, .. } => {
+                                rage_engine_formats::Error::Invalid { format, detail, .. } => {
                                     format!("{ext}: {format}: {detail}")
                                 }
                                 other => format!("{ext}: {other}"),

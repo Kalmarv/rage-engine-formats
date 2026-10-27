@@ -46,9 +46,9 @@
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::le;
-use crate::rage::le::LE;
-use crate::rage::ycd::{Animation, Sequence};
+use crate::le;
+use crate::le::LE;
+use crate::ycd::{Animation, Sequence};
 use crate::{Result, invalid};
 use primase_foundations::bytes::View;
 

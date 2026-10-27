@@ -16,10 +16,10 @@
 //! The counts are printed. Needs the GTA install and its key material (`primase_testdata::install` and `keys`).
 use std::collections::BTreeSet;
 
-use primase_gta::rage::drawable::{Drawable, DrawableDictionary, Fragment, Geometry};
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::drawable::{Drawable, DrawableDictionary, Fragment, Geometry};
 
 /// The drawable dictionaries holding a geometry whose blend weights do not sum to 255 (file names).
 const UNEXPLAINED: [&str; 3] = ["a_f_y_beach_01.ydd", "csb_bride.ydd", "csb_groom.ydd"];
@@ -97,7 +97,7 @@ fn skinned_geometries_have_bone_palettes_of_their_skeletons() {
     let (Some(dir), Some(keys)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&keys).expect("key material");
+    let keys = Keys::from_dir(&keys, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let mut yft = Tally::default();
     let mut ydd = Tally::default();

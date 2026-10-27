@@ -1,15 +1,15 @@
 //! Map data (ymap: `CMapData`, placed entities) and map types (ytyp: `CMapTypes`, archetypes), as stored.
 //!
-//! Read from a decoded META root ([`crate::rage::meta::Meta::root`]) by field name; a missing field or one of another
-//! kind is an error. Values are kept as the files store them (flags, enums and hashes raw); what they mean is the
-//! passes' business. Parts the first milestone does not use (occluders, grass, lights, car generators, interiors'
+//! Read from a decoded META root ([`crate::meta::Meta::root`]) by field name; a missing field or one of another
+//! kind is an error. Values are kept as the files store them (flags, enums and hashes raw); what they mean is for the
+//! caller. Parts the first milestone does not use (occluders, grass, lights, car generators, interiors'
 //! rooms and portals, extensions) stay in the META tree.
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
     clippy::cast_possible_truncation
 )]
-use crate::rage::meta::Struct;
+use crate::meta::Struct;
 use crate::{Result, invalid};
 
 fn name_is(s: &Struct, names: &[&str]) -> Result<usize> {
@@ -126,7 +126,7 @@ impl MapData {
 }
 
 /// A map's own fields (`CMapData` without its entities and other arrays): what tells whether its entities are wanted.
-/// Read from [`crate::rage::meta::Meta::root_scalars`] (or a whole root).
+/// Read from [`crate::meta::Meta::root_scalars`] (or a whole root).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MapHeader {
     pub name: u32,

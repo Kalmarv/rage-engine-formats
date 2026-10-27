@@ -1,4 +1,4 @@
-//! The binding table of a shader program of the Enhanced shader database ([`crate::rage::sgd2::Program::tables`]): what
+//! The binding table of a shader program of the Enhanced shader database ([`crate::sgd2::Program::tables`]): what
 //! the program's resources are called and where they sit, as the game's own tool stored them. Per program:
 //!
 //! ```text
@@ -18,12 +18,11 @@
 //! buffer and the low byte of its flags the value's type. The first name hash of every record is the joaat of a name
 //! in the table, in the name's own case or lowercase: the program's name for the resource or constant (`HDRSampler`,
 //! `specularFresnel`). The second is the hash of the shader's current name for a texture, sampler or material
-//! constant (`DiffuseTex`, `Fresnel`), which is the key a drawable's material stores its parameter under
-//! ([`crate::components::GtaShader::params`]); that name is not in the table. An engine constant or buffer has no
+//! constant (`DiffuseTex`, `Fresnel`), which is the key a drawable's material stores its parameter under; that name is not in the table. An engine constant or buffer has no
 //! second name (0, or the first repeated).
 //!
 //! Everything but the fields named is kept as stored. The counts and sizes are checked against the file; the
-//! census (`worlds/gta/tests/program_tables.rs`) holds the records to the programs' own interfaces: every constant
+//! census of the shader database holds the records to the programs' own interfaces: every constant
 //! buffer, texture and sampler a program declares has a record at its register and space, with the buffer's size.
 //! No I/O.
 #![deny(
@@ -289,7 +288,7 @@ pub struct EffectParameter {
     pub second_name: u32,
 }
 
-/// The parameter records of an effect's record (`rest`, [`crate::rage::sgd2::Effect::rest`]) that rename a
+/// The parameter records of an effect's record (`rest`, [`crate::sgd2::Effect::rest`]) that rename a
 /// parameter of one of its programs. `known` is what the effect's programs read: each constant's name hash with the
 /// type bytes it has. The record's structure around its tables is not read: a parameter record is found by its
 /// shape, a 24-byte record `flags, offset and id, two words, name hash, second name hash` at a 4-byte position whose

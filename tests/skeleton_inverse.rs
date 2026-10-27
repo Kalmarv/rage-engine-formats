@@ -7,10 +7,10 @@
 //! counts and the worst deviation are printed.
 //!
 //! Needs the GTA install and its key material.
-use primase_gta::rage::drawable::{DrawableDictionary, Fragment, Skeleton};
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::drawable::{DrawableDictionary, Fragment, Skeleton};
 
 /// Metres and unit-less rotation entries: measured at most 3.8e-6 over 96,126 bones of 966 skeletons.
 const TOLERANCE: f32 = 1e-4;
@@ -63,7 +63,7 @@ fn stored_inverse_binds_undo_the_stored_poses() {
     let (Some(dir), Some(keys)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&keys).expect("key material");
+    let keys = Keys::from_dir(&keys, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let mut tally = Tally::default();
     for f in install.listing() {

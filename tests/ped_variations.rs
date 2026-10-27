@@ -8,20 +8,20 @@
 //! Three `.ymt` files (`slod_human` among them) are not resources (plain binaries): counted, not read.
 //!
 //! Needs the GTA install and its key material.
-use primase_gta::rage::drawable::DrawableDictionary;
-use primase_gta::rage::meta::Meta;
-use primase_gta::rage::ped::PedVariations;
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
-use primase_gta::read::archive::listing::Storage;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::archive::listing::Storage;
+use rage_engine_formats::drawable::DrawableDictionary;
+use rage_engine_formats::meta::Meta;
+use rage_engine_formats::ped::PedVariations;
 
 #[test]
 fn every_ped_drawable_has_its_entry() {
     let (Some(dir), Some(keys)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&keys).expect("key material");
+    let keys = Keys::from_dir(&keys, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let (mut peds, mut entries, mut not_resources, mut without_dictionary) = (0usize, 0usize, 0usize, 0usize);
     let mut by_suffix = std::collections::BTreeMap::<char, usize>::new();

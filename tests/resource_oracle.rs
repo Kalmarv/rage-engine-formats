@@ -18,12 +18,12 @@ use std::fs::File;
 mod codewalker;
 
 use codewalker::{check_drawable, check_ytd};
-use primase_gta::rage::drawable::Drawable;
-use primase_gta::rage::resource::Resource;
-use primase_gta::rage::texture::TextureDictionary;
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, OracleSet, install, keys, oracle};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::drawable::Drawable;
+use rage_engine_formats::resource::Resource;
+use rage_engine_formats::texture::TextureDictionary;
 use serde_json::Value;
 
 #[test]
@@ -35,7 +35,7 @@ fn drawables_and_textures_against_the_oracle() {
     ) else {
         return;
     };
-    let keys = Keys::from_dir(&key_dir).expect("key material");
+    let keys = Keys::from_dir(&key_dir, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let mut files: Vec<_> = std::fs::read_dir(&oracle)
         .expect("oracle folder")

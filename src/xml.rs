@@ -14,7 +14,7 @@ use crate::{Result, invalid};
 
 /// One element: its name, attributes, child elements in order, and its text (concatenated, untrimmed).
 #[derive(Clone, Debug, Default)]
-pub(crate) struct Element {
+pub struct Element {
     pub name: String,
     pub attrs: Vec<(String, String)>,
     pub children: Vec<Element>,
@@ -71,14 +71,14 @@ impl Element {
 
 /// The deepest element nesting read. The tree is built iteratively but dropped and walked by recursion, which a document
 /// of a few hundred thousand nested elements overflows the stack of; the game's files nest a dozen deep.
-pub(crate) const MAX_DEPTH: usize = 64;
+pub const MAX_DEPTH: usize = 64;
 
 fn err(what: &str, e: impl std::fmt::Display) -> crate::Error {
     invalid("XML", 0, format!("{what}: {e}"))
 }
 
 /// Parses `bytes` (UTF-8, optionally with a byte order mark) into its root element.
-pub(crate) fn parse(bytes: &[u8], what: &str) -> Result<Element> {
+pub fn parse(bytes: &[u8], what: &str) -> Result<Element> {
     let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes);
     let text = std::str::from_utf8(bytes).map_err(|e| err(what, e))?;
     let mut reader = Reader::from_str(text);

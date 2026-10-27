@@ -6,17 +6,17 @@
 //! Needs the GTA install and its key material.
 use std::collections::BTreeMap;
 
-use primase_gta::rage::ycd::ClipDictionary;
-use primase_gta::read::archive::archive_set::Install;
-use primase_gta::read::archive::keys::Keys;
 use primase_testdata::{Game, install, keys};
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::ycd::ClipDictionary;
 
 #[test]
 fn every_clip_dictionary_reads() {
     let (Some(dir), Some(keys)) = (install(Game::Gta), keys(Game::Gta)) else {
         return;
     };
-    let keys = Keys::from_dir(&keys).expect("key material");
+    let keys = Keys::from_dir(&keys, None).expect("key material");
     let install = Install::open(&dir, &keys).expect("install");
     let (mut dictionaries, mut animations, mut clips, mut sequences, mut bones, mut bytes) =
         (0usize, 0usize, 0usize, 0usize, 0usize, 0u64);
