@@ -448,7 +448,7 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 [[package]]
 name = "primase-foundations"
 version = "0.1.0"
-source = "git+https://github.com/Kalmarv/primase-foundations?rev=05dc616e7bd14cad63c4e5218be6e8b79cee60ce#05dc616e7bd14cad63c4e5218be6e8b79cee60ce"
+source = "git+https://github.com/Kalmarv/primase-foundations?rev=8dd2fb8caa84eb22b6998655550f1cf288ca6b93#8dd2fb8caa84eb22b6998655550f1cf288ca6b93"
 dependencies = [
  "flate2",
  "half",
@@ -462,7 +462,7 @@ dependencies = [
 [[package]]
 name = "primase-oozextract"
 version = "0.5.6"
-source = "git+https://github.com/Kalmarv/primase-oozextract?rev=58b98fa0d69569b69bc95891a784eddd2c22a69e#58b98fa0d69569b69bc95891a784eddd2c22a69e"
+source = "git+https://github.com/Kalmarv/primase-oozextract?rev=9273ca48cd301d0cf7fb7cd3a83c9ecdc6c0bb32#9273ca48cd301d0cf7fb7cd3a83c9ecdc6c0bb32"
 dependencies = [
  "bytemuck",
  "bytes",
@@ -475,7 +475,7 @@ dependencies = [
 [[package]]
 name = "primase-testdata"
 version = "0.1.0"
-source = "git+https://github.com/Kalmarv/primase-testdata?rev=71a28a5b188b259e1d49681823aa00996260f544#71a28a5b188b259e1d49681823aa00996260f544"
+source = "git+https://github.com/Kalmarv/primase-testdata?rev=3d70d5ce04d0335b41d359fbfc7d6d5a714b581d#3d70d5ce04d0335b41d359fbfc7d6d5a714b581d"
 dependencies = [
  "serde_json",
  "thiserror",

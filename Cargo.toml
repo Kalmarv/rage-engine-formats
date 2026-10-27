@@ -44,8 +44,8 @@ publish = false
 [workspace.dependencies]
 aes = { version = "=0.9.3", default-features = false }
 indexmap = { version = "=2.14.2", default-features = false, features = ["std"] }
-primase-foundations = { git = "https://github.com/Kalmarv/primase-foundations", rev = "05dc616e7bd14cad63c4e5218be6e8b79cee60ce" }
-primase-testdata = { git = "https://github.com/Kalmarv/primase-testdata", rev = "71a28a5b188b259e1d49681823aa00996260f544" }
+primase-foundations = { git = "https://github.com/Kalmarv/primase-foundations", rev = "8dd2fb8caa84eb22b6998655550f1cf288ca6b93" }
+primase-testdata = { git = "https://github.com/Kalmarv/primase-testdata", rev = "3d70d5ce04d0335b41d359fbfc7d6d5a714b581d" }
 quick-xml = { version = "=0.42.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "=1.0.154", default-features = false, features = ["std", "preserve_order", "float_roundtrip"] }
