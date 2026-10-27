@@ -2,7 +2,20 @@
 
 A Rust library that reads the file formats of Rockstar's RAGE engine as Grand Theft Auto V stores them: bytes (or, for archives, paths) in, plain records out.
 
-It reads, by module: RPF7 archives with their NG and AES ciphers and the install's mount data (`archive`, `mount`); RSC7 resources (`resource`) and what they hold, namely drawables and fragments (`drawable`), texture dictionaries (`texture`, `sga`), collision bounds (`bounds`) and clip dictionaries with their decoded channel tracks (`ycd`, `ycd_channels`); META documents with the map data, map types and ped variation info read from them (`meta`, `map`, `ped`); the Legacy edition's compiled effects (`fxc`) and the Enhanced edition's `SGD2` shader database (`sgd2`, `sgd2_effect`, `sgd2_table`); and the game's XML data files, their binary form RBF and the texture-dictionary parent list (`xml`, `rbf`, `gtxd`). It was written against GTA V Enhanced; the Legacy edition appears where a module says so (`fxc` reads its effect files, `Keys::from_legacy_executable` finds key material in its executable, and the install tests accept either edition's folder). The drawable, texture, bounds, clip and shader readers use the Enhanced layouts. The module list with one line per module is in the [crate documentation](https://docs.rs/rage-engine-formats).
+It was written and checked against GTA V Enhanced (resource layouts: drawables version 159, fragments 171, texture dictionaries 5, clip dictionaries 46); the Legacy edition is read where a module says so. Against an install, the real-data tests compare the readings with [CodeWalker](https://github.com/dexyfex/CodeWalker)'s. By module, it reads:
+
+| module | reads |
+|---|---|
+| `archive`, `mount` | RPF7 archives (NG and AES ciphers, nested archives), an install's listing and file tables, and the DLC mount data that decides which archives are live |
+| `resource` | RSC7 resources: the inflated system and graphics pages and the pointers into them |
+| `drawable`, `texture`, `sga` | drawables and fragments (models, geometry, shaders and their parameters, skeletons, lights), texture dictionaries and their buffer formats |
+| `bounds` | collision bounds: primitives, geometry bounds with polygons and materials, composites |
+| `ycd`, `ycd_channels` | clip dictionaries and the decoded channel tracks of their animations |
+| `meta`, `map`, `ped` | META documents, and the map data, map types and ped variation info read from them |
+| `fxc`, `sgd2`, `sgd2_effect`, `sgd2_table` | Legacy's compiled effects (`.fxc`) and Enhanced's `SGD2` shader database with its techniques and binding tables |
+| `xml`, `rbf`, `gtxd` | the game's XML data files, their binary form (RBF) and the texture-dictionary parent list |
+
+The [crate documentation](https://docs.rs/rage-engine-formats) groups the modules and gives the layout each reader holds a file to. The drawable, texture, bounds, clip and shader readers use the Enhanced layouts; `fxc` reads Legacy effect files and `Keys::from_legacy_executable` finds key material in a Legacy executable.
 
 ## Example
 
@@ -33,7 +46,7 @@ To open an install, pass the folder and your key material to `Install::open` (se
 
 - **Checked reads.** The format readers take a byte slice or a decoded `Resource` and read through bounds-checked accessors; the whole library denies unchecked indexing, slicing, arithmetic and narrowing casts by lint (the tests, which build their fixtures, are outside it). A file that does not hold what its format says is an `Error`, not a panic, and a pointer, count or size read from a file is checked against the bytes there are before it is followed. How much a file can make a reader allocate is limited: a resource inflates to at most its compressed size times a fixed ratio plus a fixed allowance, and reads that copy out of a resource are charged against it and refused beyond four times its size.
 - **Refusals that say what was wrong.** `Error::Invalid` carries the format, the byte offset and a description of what was expected. The XML-based files (`xml`, `mount`) report the offset in the document of the markup that is wrong.
-- **Strict readers.** Formats are read to their last byte and unknown elements or values are refused rather than skipped, so a layout that differs from what the reader was checked against fails loudly.
+- **Strict readers.** The whole-file formats (`fxc`, `sgd2`, `sgd2_table`, `rbf`) are read to their last byte, bytes after the last record are an error, and the XML-based readers refuse an element they do not know instead of skipping it, so a layout that differs from what the reader was checked against fails loudly.
 - **No unsafe code, no hidden I/O.** `unsafe` is denied; only the modules that open archives and key files touch the file system, and none read the environment or start processes.
 - **No key material.** The archive ciphers need keys that this crate does not contain and cannot derive: you supply them as bytes or as a folder (`archive::keys::Keys::from_parts`, `from_dir`), and may supply the SHA-1 digests they must match (`archive::keys::KeyDigests`). The crate holds no digests either.
 
@@ -77,4 +90,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), including how to report a file this libr
 
 ## License
 
-GPL-3.0-or-later; see [LICENSE](LICENSE). Used by primase, a game-asset conversion library.
+GPL-3.0-or-later; see [LICENSE](LICENSE).
+
+Used by [primase](https://github.com/Kalmarv/primase), a game-asset conversion library.

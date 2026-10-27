@@ -1,7 +1,8 @@
 //! Readers for the file formats of Rockstar's RAGE engine, as Grand Theft Auto V stores them: bytes (or, for
 //! archives, paths) in, plain records out.
 //!
-//! It was written against GTA V Enhanced; the Legacy edition is read where a module says so ([`fxc`] reads the
+//! It was written and checked against GTA V Enhanced (resource layouts: drawables version 159, fragments 171, texture
+//! dictionaries 5, clip dictionaries 46); the Legacy edition is read where a module says so ([`fxc`] reads the
 //! Legacy edition's effect files, and [`archive::keys::Keys::from_legacy_executable`] finds key material in its
 //! executable). Every read is bounded by the bytes it was given, and a malformed file is an [`Error`] naming the
 //! format, the offset of the bytes that are wrong and what was expected there, never a panic.

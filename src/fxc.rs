@@ -141,7 +141,7 @@ pub struct Variable {
     pub group: u8,
     /// The variable's name, a length-prefixed ASCII string.
     pub name: String,
-    /// The second name string the file carries after the first,, as stored.
+    /// The second name string the file carries after the first, as stored.
     pub name2: String,
     /// The offset byte, as stored.
     pub offset: u8,
