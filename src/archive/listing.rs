@@ -95,15 +95,13 @@ impl Install {
     /// Every archive, the top-level ones and those nested in them, in the install's order.
     pub fn archive_listing(&self) -> impl Iterator<Item = ListedArchive<'_>> {
         self.archives.iter().enumerate().map(|(index, a)| {
-            let mut files = 0;
-            let mut archives = 0;
-            for e in &a.entries {
-                if let Some(storage) = storage(&e.kind) {
-                    files += 1;
-                    let nested = matches!(storage, Storage::Binary { .. }) && extension(&e.name) == "rpf";
-                    archives += usize::from(nested);
-                }
-            }
+            let stored = || a.entries.iter().filter_map(|e| Some((e, storage(&e.kind)?)));
+            let files = stored().count();
+            let archives = stored()
+                .filter(|(e, storage)| {
+                    matches!(storage, Storage::Binary { .. }) && extension(&e.name) == "rpf"
+                })
+                .count();
             ListedArchive {
                 index,
                 path: &a.path,

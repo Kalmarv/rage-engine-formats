@@ -91,7 +91,7 @@ pub const AES_KEY_FILE: &str = "gtav_aes_key.dat";
 const NG_KEY_BYTES: usize = 68 * 4;
 const NG_TABLE_BYTES: usize = 256 * 4;
 const NG_KEY_COUNT: usize = 101;
-const NG_ROUNDS: usize = 17;
+pub(crate) const NG_ROUNDS: usize = 17;
 
 fn sha1(bytes: &[u8]) -> [u8; 20] {
     Sha1::digest(bytes).into()
