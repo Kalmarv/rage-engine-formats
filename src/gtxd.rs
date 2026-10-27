@@ -40,9 +40,12 @@ pub struct TextureParents {
 
 /// The pairs of one `CMapParentTxds` tree: `(child, parent)` names as written.
 fn pairs(root: &Element, what: &str) -> Result<Vec<(String, String)>> {
-    let bad = |d: String| invalid("gtxd", 0, format!("{what}: {d}"));
+    let bad = |at: &Element, d: String| invalid("gtxd", at.offset, format!("{what}: {d}"));
     if !root.name.eq_ignore_ascii_case("CMapParentTxds") {
-        return Err(bad(format!("root <{}>", root.name)));
+        return Err(bad(
+            root,
+            format!("root <{}>, expected <CMapParentTxds>", root.name),
+        ));
     }
     root.only(what, &["txdRelationships"])?;
     let mut out = Vec::new();
@@ -51,10 +54,10 @@ fn pairs(root: &Element, what: &str) -> Result<Vec<(String, String)>> {
         for item in rels.items() {
             item.only(what, &["parent", "child"])?;
             let (Some(parent), Some(child)) = (item.child_text("parent"), item.child_text("child")) else {
-                return Err(bad("an item without parent or child".into()));
+                return Err(bad(item, "an item without parent or child, expected both".into()));
             };
             if parent.is_empty() || child.is_empty() {
-                return Err(bad("an empty name".into()));
+                return Err(bad(item, "an empty name, expected parent and child names".into()));
             }
             out.push((child.to_string(), parent.to_string()));
         }
@@ -83,7 +86,16 @@ impl TextureParents {
         }
         let mut t = TextureParents::default();
         for (f, rbf) in files {
-            let path = set.path(f).to_string();
+            let path = set
+                .path(f)
+                .ok_or_else(|| {
+                    invalid(
+                        "gtxd",
+                        0,
+                        format!("file reference {f:?} is not in the archive set"),
+                    )
+                })?
+                .to_string();
             let bytes = set.install.binary(f, keys)?;
             let root = if rbf {
                 crate::rbf::parse(&bytes)?

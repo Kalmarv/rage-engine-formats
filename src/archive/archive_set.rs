@@ -36,7 +36,7 @@ use indexmap::IndexMap;
 use crate::archive::keys::Keys;
 use crate::archive::rpf::{Archive, EntryKind};
 use crate::mount::{self, Content, Setup};
-use crate::{Result, invalid};
+use crate::{Error, Result, invalid};
 
 /// A file of the install: archive index and entry index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -146,22 +146,38 @@ impl Install {
         self.binary(r, keys).map(Some)
     }
 
+    /// The archive a file reference names; an error for a reference to an archive this install does not hold (one
+    /// made from another install).
+    fn archive_of(&self, f: FileRef) -> Result<&Archive> {
+        self.archives.get(f.archive).ok_or_else(|| {
+            invalid(
+                "install",
+                0,
+                format!(
+                    "file reference to archive {}, expected one of the install's {} archives",
+                    f.archive,
+                    self.archives.len()
+                ),
+            )
+        })
+    }
+
     /// A binary file's contents.
     pub fn binary(&self, f: FileRef, keys: &Keys) -> Result<Vec<u8>> {
-        let a = &self.archives[f.archive];
+        let a = self.archive_of(f)?;
         a.binary(&mut File::open(&a.file)?, f.entry, keys)
     }
 
     /// A binary file as its archive stores it, decrypted: a compressed file's raw deflate stream with the size it
     /// inflates to, or an uncompressed file's contents with `None` ([`Archive::stored`](crate::archive::rpf::Archive::stored)).
     pub fn stored(&self, f: FileRef, keys: &Keys) -> Result<(Vec<u8>, Option<usize>)> {
-        let a = &self.archives[f.archive];
+        let a = self.archive_of(f)?;
         a.stored(&mut File::open(&a.file)?, f.entry, keys)
     }
 
     /// A resource file (RSC7), decoded.
     pub fn resource(&self, f: FileRef, keys: &Keys) -> Result<crate::resource::Resource> {
-        let a = &self.archives[f.archive];
+        let a = self.archive_of(f)?;
         a.resource(&mut File::open(&a.file)?, f.entry, keys)
     }
 }
@@ -414,10 +430,11 @@ impl ArchiveSet {
     /// for each file kind and name, the archive holding its live copy. Fails when a mount data file the rules need cannot be read or
     /// is not one the game's files use.
     pub fn build(install: Install, keys: &Keys, state: MapState) -> Result<Self> {
-        let read = |path: &str| -> Result<Vec<u8>> {
-            install
-                .read(path, keys)?
-                .ok_or_else(|| invalid("install", 0, format!("{path} not found")))
+        let read = |path: &str, needed_for: &'static str| -> Result<Vec<u8>> {
+            install.read(path, keys)?.ok_or_else(|| Error::NotFound {
+                path: path.to_string(),
+                needed_for,
+            })
         };
         let mut map: IndexMap<String, usize> = IndexMap::new();
         let mut mounted: Vec<usize> = Vec::new();
@@ -450,7 +467,10 @@ impl ArchiveSet {
         }
         // title-update mounts: device -> patch folder in update.rpf
         let tu = mount::title_update_mounts(
-            &read("update\\update.rpf\\common\\data\\extratitleupdatedata.meta")?,
+            &read(
+                "update\\update.rpf\\common\\data\\extratitleupdatedata.meta",
+                "the title-update mounts",
+            )?,
             "extratitleupdatedata.meta",
         )?;
         let patch_for = |device: &str| -> Option<String> {
@@ -467,7 +487,10 @@ impl ArchiveSet {
                 })
         };
         // packs
-        let list = mount::pack_list(&read("update\\update.rpf\\common\\data\\dlclist.xml")?)?;
+        let list = mount::pack_list(&read(
+            "update\\update.rpf\\common\\data\\dlclist.xml",
+            "the pack list",
+        )?)?;
         let mut packs = Vec::new();
         for (pos, item) in list.iter().enumerate() {
             let archive = if let Some(rest) = item.strip_prefix("dlcpacks:/") {
@@ -514,13 +537,13 @@ impl ArchiveSet {
                 })
                 .filter(|p| install.file(p).is_some())
                 .unwrap_or_else(|| format!("{archive}\\setup2.xml"));
-            let setup = mount::setup(&read(&setup_path)?, &setup_path)?;
+            let setup = mount::setup(&read(&setup_path, "a pack's setup")?, &setup_path)?;
             let content_path = format!("{archive}\\{}", setup.dat_file.to_lowercase());
             let content_path = patch_for(&setup.device_name)
                 .map(|p| format!("{p}\\{}", setup.dat_file.to_lowercase()))
                 .filter(|p| install.file(p).is_some())
                 .unwrap_or(content_path);
-            let content = mount::content(&read(&content_path)?, &content_path)?;
+            let content = mount::content(&read(&content_path, "a pack's content file")?, &content_path)?;
             let folder = archive.trim_end_matches("dlc.rpf");
             let subpacks = (1..=setup.sub_pack_count)
                 .map(|i| format!("{folder}dlc{i}.rpf"))
@@ -599,7 +622,10 @@ impl ArchiveSet {
 
         let mut tables: BTreeMap<String, BTreeMap<u32, FileRef>> = BTreeMap::new();
         let add = |tables: &mut BTreeMap<String, BTreeMap<u32, FileRef>>, ai: usize, map_kinds: bool| {
-            for (ei, e) in install.archives[ai].entries.iter().enumerate() {
+            let Some(archive) = install.archives.get(ai) else {
+                return;
+            };
+            for (ei, e) in archive.entries.iter().enumerate() {
                 if matches!(e.kind, EntryKind::Directory { .. }) {
                     continue;
                 }
@@ -649,9 +675,10 @@ impl ArchiveSet {
             .copied()
     }
 
-    /// A file's path.
-    pub fn path(&self, f: FileRef) -> &str {
-        &self.install.archives[f.archive].entries[f.entry].path
+    /// A file's path; `None` for a reference to a file this install does not hold.
+    pub fn path(&self, f: FileRef) -> Option<&str> {
+        let entry = self.install.archives.get(f.archive)?.entries.get(f.entry)?;
+        Some(&entry.path)
     }
 }
 

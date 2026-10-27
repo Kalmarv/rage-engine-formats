@@ -123,6 +123,7 @@ pub fn parse(bytes: &[u8]) -> Result<Element> {
                         }
                         stack.push(Open {
                             el: Element {
+                                offset: u64::try_from(at).unwrap_or(u64::MAX),
                                 name,
                                 ..Element::default()
                             },
@@ -154,6 +155,7 @@ pub fn parse(bytes: &[u8]) -> Result<Element> {
                     open.el.attrs.push((name, v));
                 } else {
                     open.el.children.push(Element {
+                        offset: u64::try_from(at).unwrap_or(u64::MAX),
                         name,
                         attrs: value,
                         ..Element::default()

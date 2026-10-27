@@ -95,7 +95,7 @@ fn live_files_against_the_oracle() {
         let mut classes: BTreeMap<&str, Vec<String>> = BTreeMap::new();
         for (h, p) in o {
             let h: u32 = h.parse().expect("hash");
-            match ours.get(&h).map(|f| set.path(*f)) {
+            match ours.get(&h).and_then(|f| set.path(*f)) {
                 Some(q) if q == p => same += 1,
                 q => classes
                     .entry(class(kind, q, Some(p)))
@@ -105,7 +105,7 @@ fn live_files_against_the_oracle() {
         }
         for (h, f) in &ours {
             if !o.contains_key(&h.to_string()) {
-                let q = set.path(*f);
+                let q = set.path(*f).expect("a live file is in the set");
                 classes
                     .entry(class(kind, Some(q), None))
                     .or_default()

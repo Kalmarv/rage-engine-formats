@@ -26,32 +26,35 @@ fn texts(e: Option<&Element>) -> Vec<String> {
 }
 
 fn flag(e: &Element, name: &str, what: &str) -> Result<bool> {
-    match e.child_value(name) {
+    let Some(c) = e.child(name) else { return Ok(false) };
+    match c.attr("value") {
         None => Ok(false),
         Some(v) if v.eq_ignore_ascii_case("true") => Ok(true),
         Some(v) if v.eq_ignore_ascii_case("false") => Ok(false),
         Some(v) => Err(invalid(
             "XML",
-            0,
-            format!("{what}: <{name} value=\"{v}\"> is not a boolean"),
+            c.offset,
+            format!("{what}: <{name} value=\"{v}\">: expected true or false"),
         )),
     }
 }
 
 fn int(e: &Element, name: &str, what: &str) -> Result<i64> {
-    match e.child_value(name) {
+    let Some(c) = e.child(name) else { return Ok(0) };
+    match c.attr("value") {
         None => Ok(0),
         Some(v) => v.trim().parse().map_err(|_| {
             invalid(
                 "XML",
-                0,
-                format!("{what}: <{name} value=\"{v}\"> is not an integer"),
+                c.offset,
+                format!("{what}: <{name} value=\"{v}\">: expected an integer"),
             )
         }),
     }
 }
 
-/// `dlclist.xml`: the packs the game looks for, in list order, as `platform:/dlcpacks/<name>/` paths, lowercase.
+/// `dlclist.xml`: the packs the game looks for, in list order, as `dlcpacks:/<name>/` paths (or `platform:/<folder>/`
+/// for packs inside the base images), `/`-separated and lowercase. Any other kind of path is refused at its item.
 pub fn pack_list(bytes: &[u8]) -> Result<Vec<String>> {
     let what = "dlclist.xml";
     let r = parse(bytes, what)?;
@@ -60,10 +63,23 @@ pub fn pack_list(bytes: &[u8]) -> Result<Vec<String>> {
     if let Some(p) = paths {
         p.only(what, &["Item"])?;
     }
-    Ok(texts(paths)
-        .into_iter()
-        .map(|t| t.replace('\\', "/").to_lowercase())
-        .collect())
+    let mut out = Vec::new();
+    for item in items(paths) {
+        let written = item.text.trim();
+        if written.is_empty() {
+            continue;
+        }
+        let path = written.replace('\\', "/").to_lowercase();
+        if !path.starts_with("dlcpacks:/") && !path.starts_with("platform:/") {
+            return Err(invalid(
+                "XML",
+                item.offset,
+                format!("{what}: pack path '{written}', expected dlcpacks:/<name>/ or platform:/<folder>/"),
+            ));
+        }
+        out.push(path);
+    }
+    Ok(out)
 }
 
 /// A pack's `setup2.xml`.
@@ -239,16 +255,23 @@ pub fn content(bytes: &[u8], what: &str) -> Result<Content> {
                 {
                     return Err(invalid(
                         "XML",
-                        0,
-                        format!("{what}: active change set conditions are not read"),
+                        ec.offset,
+                        format!(
+                            "{what}: <activeChangesetConditions> holds conditions, expected it empty (they are not read)"
+                        ),
                     ));
                 }
                 let g = ec.child_text("genericConditions").unwrap_or_default();
                 if !g.is_empty() {
+                    let at = ec.child("genericConditions").map_or(ec.offset, |c| c.offset);
                     level = Some(
                         g.strip_prefix("$level=")
                             .ok_or_else(|| {
-                                invalid("XML", 0, format!("{what}: generic condition '{g}' is not read"))
+                                invalid(
+                                    "XML",
+                                    at,
+                                    format!("{what}: generic condition '{g}', expected '$level=<name>'"),
+                                )
                             })?
                             .to_string(),
                     );

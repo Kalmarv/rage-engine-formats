@@ -58,7 +58,7 @@ fn no_placement_is_live_twice() {
                 .expect("ymap decodes");
             let map = MapData::from_root(&root).expect("map data");
             placements += map.entities.len();
-            let path = set.path(f);
+            let path = set.path(f).expect("a live file is in the set");
             for e in &map.entities {
                 let placers = at.entry((e.archetype, e.position.map(f32::to_bits))).or_default();
                 if !placers.iter().any(|p| p.path == path) {
