@@ -12,7 +12,7 @@ use primase_foundations::compress::{DEFLATE_MAX_RATIO, Deflate};
 
 use crate::{Result, invalid};
 
-/// The "RSC7" magic, little-endian.
+/// The first four bytes of a resource, `RSC7`, read as a little-endian u32.
 pub const MAGIC: u32 = 0x3743_5352;
 
 /// A resource's page layout for one memory kind: a base size and how many pages of each of nine sizes.
@@ -158,12 +158,14 @@ impl Resource {
         })
     }
 
-    /// The system (virtual) pages.
+    /// The system (virtual) pages: the first `system.size()` bytes of `data`; an error when `data` is not exactly both
+    /// page sets.
     pub fn system_data(&self) -> Result<&[u8]> {
         Ok(self.pages()?.0)
     }
 
-    /// The graphics (physical) pages.
+    /// The graphics (physical) pages: the bytes of `data` after the system pages; an error when `data` is not exactly
+    /// both page sets.
     pub fn graphics_data(&self) -> Result<&[u8]> {
         Ok(self.pages()?.1)
     }

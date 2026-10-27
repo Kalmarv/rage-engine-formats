@@ -97,16 +97,18 @@ pub const SEMANTICS: [&str; 52] = [
 /// One vertex element: semantic slot, buffer format, byte offset in the vertex.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Element {
-    /// The semantic slot, an index into [`SEMANTICS`].
+    /// The semantic slot, an index into [`SEMANTICS`] (the declaration lists 52 slots, one table entry each).
     pub slot: u8,
-    /// The element's buffer format.
+    /// The element's buffer format, the code the declaration stores for the slot (0 means the slot is absent and is not
+    /// listed).
     pub format: BufferFormat,
-    /// The element's byte offset in the vertex.
+    /// The element's byte offset in the vertex, checked on reading to fit within `stride`.
     pub offset: u32,
 }
 
 impl Element {
-    /// The name of the semantic slot this element fills (`POSITION0`, `NORMAL0`, ...), or a placeholder for a slot outside [`SEMANTICS`].
+    /// The name of the semantic slot this element fills (`POSITION0`, `NORMAL0`, ...), or a placeholder for a slot
+    /// outside [`SEMANTICS`].
     pub fn semantic(self) -> &'static str {
         SEMANTICS
             .get(usize::from(self.slot))
@@ -118,19 +120,20 @@ impl Element {
 /// A geometry: interleaved vertices, 16-bit triangle-list indices, its shader.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Geometry {
-    /// Index into the drawable's shaders.
+    /// Index into the drawable's [`Drawable::shaders`], from the model's shader mapping (0x20) for this geometry.
     pub shader: u16,
     /// Bounds, as stored (`min`, `max`, each with a fourth component).
     pub bounds: [[f32; 4]; 2],
-    /// How many vertices there are.
+    /// How many vertices there are: the vertex buffer's count at 0x08, checked against the geometry's 16-bit count at
+    /// 0x60.
     pub vertex_count: u32,
-    /// Bytes of one vertex.
+    /// Bytes of one vertex: the vertex buffer's stride at 0x0C, checked against the geometry's at 0x70.
     pub stride: u16,
-    /// Elements in slot order.
+    /// The vertex elements, in slot order; their offsets say where each lies within one stride.
     pub elements: Vec<Element>,
     /// The interleaved vertex bytes, `vertex_count` times `stride`.
     pub vertices: Vec<u8>,
-    /// The triangle-list indices into the vertices.
+    /// The triangle-list indices into the vertices: the index buffer's 16-bit entries, three per triangle.
     pub indices: Vec<u16>,
     /// The geometry's bone palette: the bone ids (skeleton tags) its `BLENDINDICES0` entries index, in the order
     /// stored; empty for a geometry that is not skinned (a ped's or a prop's skinned geometry has one).
@@ -161,11 +164,11 @@ impl Geometry {
 /// A model: geometries drawn with one bone binding and render mask.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Model {
-    /// The bone binding word, as stored.
+    /// The model's skeleton binding word at 0x28, as stored (not interpreted).
     pub skeleton_binding: u32,
-    /// The render mask, as stored.
+    /// The model's render mask at 0x2C, as stored (not interpreted).
     pub render_mask: u16,
-    /// The model's geometries.
+    /// The model's geometries, in the order of its geometry pointer array (0x08).
     pub geometries: Vec<Geometry>,
 }
 
@@ -176,9 +179,9 @@ pub enum ParamValue {
     Texture(Option<String>),
     /// Floats from a constant buffer (the parameter's length / 4).
     Floats(Vec<f32>),
-    /// A sampler index.
+    /// A sampler: the parameter's sampler index (info bits 2-9).
     Sampler(u8),
-    /// Kind 1, index as stored.
+    /// A parameter of kind 1 that is neither texture nor sampler nor constant: its index (info bits 2-9), as stored.
     Other(u8),
 }
 
@@ -187,40 +190,41 @@ pub enum ParamValue {
 /// 20-31), and its value.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Param {
-    /// The parameter's name hash.
+    /// The parameter's name hash, as stored (not reversed to text).
     pub name: u32,
-    /// The packed info word.
+    /// The packed info word as stored: kind in bits 0-1, then the texture, sampler or other index or the
+    /// constant-buffer index, offset and length (see [`Param`]).
     pub info: u32,
-    /// The parameter's value.
+    /// The parameter's value, read from the texture reference or constant buffer the info word names.
     pub value: ParamValue,
 }
 
 /// A shader: effect name, preset, render bucket and parameters in stored order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shader {
-    /// The effect's name hash.
+    /// The effect's name hash, the shader's first word (0x00), as stored.
     pub name: u32,
-    /// Legacy's preset (`.sps`) name hash; Enhanced stores 0x6d657461 here for every shader of the install, so a shader's
-    /// class comes from its effect name and render bucket.
+    /// Legacy's preset (`.sps`) name hash; Enhanced stores 0x6d657461 here for every shader of the install, so a
+    /// shader's class comes from its effect name and render bucket.
     pub preset: u32,
-    /// The render bucket.
+    /// The render bucket byte at 0x39.
     pub render_bucket: u8,
     /// The render bucket mask word, as stored.
     pub bucket_mask: u32,
-    /// The parameters in stored order.
+    /// The parameters in stored order, one per parameter-info record.
     pub params: Vec<Param>,
 }
 
 /// A drawable.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Drawable {
-    /// The bounding sphere's centre.
+    /// The bounding sphere's centre, at 0x20 of the drawable.
     pub bounding_centre: [f32; 3],
-    /// The bounding sphere's radius.
+    /// The bounding sphere's radius, in the same unit as the vertex positions.
     pub bounding_radius: f32,
-    /// The bounding box's minimum corner.
+    /// The bounding box's minimum corner, at 0x30.
     pub bbox_min: [f32; 3],
-    /// The bounding box's maximum corner.
+    /// The bounding box's maximum corner, at 0x40.
     pub bbox_max: [f32; 3],
     /// High, medium, low and very low LOD distances.
     pub lod_dist: [f32; 4],
@@ -230,7 +234,7 @@ pub struct Drawable {
     pub lods: [Vec<Model>; 4],
     /// The shader group's shaders, which the models' geometries index.
     pub shaders: Vec<Shader>,
-    /// The shader group's embedded texture dictionary.
+    /// The shader group's embedded texture dictionary; `None` when the drawable references textures held elsewhere.
     pub textures: Option<TextureDictionary>,
     /// Its skeleton's bones, when it has one.
     pub skeleton: Option<Skeleton>,
@@ -247,63 +251,63 @@ pub struct Drawable {
 /// sRGB bytes.
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
 pub struct LightAttr {
-    /// The light's position.
+    /// The light's position (record offset 0x08), in the space of its bone.
     pub position: [f32; 3],
-    /// The light's colour (sRGB bytes).
+    /// The light's colour (0x18..0x1B): red, green and blue sRGB bytes.
     pub colour: [u8; 3],
-    /// The flashiness byte, as stored.
+    /// The flashiness byte at 0x1B, as stored (its meaning is not interpreted).
     pub flashiness: u8,
-    /// The light's intensity.
+    /// The light's intensity (f32 at 0x1C), as stored.
     pub intensity: f32,
-    /// The light's flag word.
+    /// The light's flag word (u32 at 0x20), as stored.
     pub flags: u32,
     /// The tag of the bone the light is attached to.
     pub bone_id: u16,
-    /// 1 point, 2 spot, 4 capsule.
+    /// The light type byte at 0x26: 1 point, 2 spot, 4 capsule; other values are kept as stored.
     pub kind: u8,
-    /// The light group id.
+    /// The light group id (byte at 0x27).
     pub group_id: u8,
     /// The hours it is on: bit h for hour h (the low 24 bits), higher bits as stored.
     pub time_flags: u32,
-    /// The light's falloff distance.
+    /// The light's falloff distance (f32 at 0x2C).
     pub falloff: f32,
-    /// The light's falloff exponent.
+    /// The light's falloff exponent (f32 at 0x30).
     pub falloff_exponent: f32,
-    /// Culling plane normal and offset.
+    /// The culling plane (0x34): normal xyz and offset.
     pub culling_plane: [f32; 4],
-    /// The shadow blur byte.
+    /// The shadow blur byte at 0x44, as stored.
     pub shadow_blur: u8,
-    /// The volumetric light's intensity.
+    /// The volumetric light's intensity (f32 at 0x4C).
     pub volume_intensity: f32,
-    /// The volumetric light's size scale.
+    /// The volumetric light's size scale (f32 at 0x50).
     pub volume_size_scale: f32,
     /// The volumetric light's outer colour (sRGB bytes).
     pub volume_outer_colour: [u8; 3],
-    /// The light hash byte, as stored.
+    /// The light hash byte at 0x57, as stored.
     pub light_hash: u8,
-    /// The volumetric light's outer intensity.
+    /// The volumetric light's outer intensity (f32 at 0x58).
     pub volume_outer_intensity: f32,
-    /// The corona's size.
+    /// The corona's size (f32 at 0x5C).
     pub corona_size: f32,
-    /// The volumetric light's outer exponent.
+    /// The volumetric light's outer exponent (f32 at 0x60).
     pub volume_outer_exponent: f32,
     /// Light, shadow, specular and volumetric fade distances.
     pub fade_distances: [u8; 4],
-    /// The shadow's near clip distance.
+    /// The shadow's near clip distance (f32 at 0x68).
     pub shadow_near_clip: f32,
-    /// The corona's intensity.
+    /// The corona's intensity (f32 at 0x6C).
     pub corona_intensity: f32,
-    /// The corona's depth bias.
+    /// The corona's depth bias (f32 at 0x70).
     pub corona_z_bias: f32,
-    /// The spot or capsule direction.
+    /// The spot or capsule direction (0x74), in the space of the light's bone.
     pub direction: [f32; 3],
-    /// The light's tangent.
+    /// The light's tangent vector (0x80), in the space of the light's bone.
     pub tangent: [f32; 3],
-    /// A spot's inner cone angle.
+    /// A spot's inner cone angle (f32 at 0x8C), as stored.
     pub cone_inner_angle: f32,
-    /// A spot's outer cone angle.
+    /// A spot's outer cone angle (f32 at 0x90), as stored.
     pub cone_outer_angle: f32,
-    /// A capsule's extent.
+    /// A capsule's extent (0x94).
     pub extent: [f32; 3],
     /// The name hash of the texture the light projects.
     pub projected_texture_hash: u32,
@@ -363,7 +367,7 @@ impl LightAttr {
 /// fragment, the fragment's own bone pose (by bone index, into the model's space).
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
 pub struct Bones {
-    /// The skeleton, when there is one.
+    /// The skeleton, when the drawable has one (pointer at 0x18 of the drawable); `None` when the pointer is 0.
     pub skeleton: Option<Skeleton>,
     /// A fragment's bone pose (the list at 0xA8 of its header); empty for a drawable or a dictionary entry.
     pub fragment_pose: Vec<[[f32; 4]; 3]>,
@@ -1115,13 +1119,13 @@ pub const FRAGMENT_VERSION: u32 = 171;
 /// of its physics (groups, children's masses and joints), glass and bones are not read yet.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fragment {
-    /// The fragment's name.
+    /// The fragment's name, read from the string at 0x58.
     pub name: String,
     /// The main drawable, the one the world draws.
     pub drawable: Option<Drawable>,
-    /// The extra drawables, by name.
+    /// The extra drawables with their names (list at 0x38, names at 0x40).
     pub extra: Vec<(String, Drawable)>,
-    /// The cloth drawable.
+    /// The cloth drawable (pointer at 0xF8), when the fragment has one.
     pub cloth: Option<Drawable>,
     /// The bones' pose, by bone index: three rows `[x, y, z, translation]` (`world = row . (p, 1)`).
     pub pose: Vec<[[f32; 4]; 3]>,
@@ -1251,7 +1255,7 @@ impl DrawableDictionary {
         })
     }
 
-    /// The drawable of this name hash.
+    /// The drawable whose entry name hash is `hash` (a binary search of the stored, sorted hashes), or `None`.
     pub fn get(&self, hash: u32) -> Option<&Drawable> {
         self.hashes
             .binary_search(&hash)
@@ -1292,8 +1296,8 @@ mod tests {
     use crate::resource::PageFlags;
 
     /// A bone's pose is its own transform, then its parents' up to the root: a child turned a quarter about z and moved
-    /// 1 along its parent's x, under a root moved 10 along z, takes (1, 0, 0) to (1, 1, 10).
-    /// A fragment's own pose of a bone replaces the skeleton's rest pose of it; the others stay at rest.
+    /// 1 along its parent's x, under a root moved 10 along z, takes (1, 0, 0) to (1, 1, 10). A fragment's own pose of a
+    /// bone replaces the skeleton's rest pose of it; the others stay at rest.
     #[test]
     fn a_fragment_pose_replaces_the_rest_pose_of_its_bones() {
         let moved = [[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]];

@@ -82,7 +82,7 @@ pub fn pack_list(bytes: &[u8]) -> Result<Vec<String>> {
     Ok(out)
 }
 
-/// A pack's `setup2.xml`.
+/// A pack's `setup2.xml`: how the pack is mounted and which change-set groups it offers.
 #[derive(Clone, Debug, Default)]
 pub struct Setup {
     /// The device name the pack's files are mounted under (`dlcMPBeach`).
@@ -91,7 +91,7 @@ pub struct Setup {
     pub dat_file: String,
     /// The pack's name as written (a hash name or a plain one).
     pub name_hash: String,
-    /// The pack's `type` as written.
+    /// The `type` element's text as written.
     pub kind: String,
     /// The pack's mount order; lower mounts first.
     pub order: i64,
@@ -156,7 +156,8 @@ pub fn setup(bytes: &[u8], what: &str) -> Result<Setup> {
 /// One data file of a content file.
 #[derive(Clone, Debug, Default)]
 pub struct DataFile {
-    /// As written (`dlcMPHeist:/%PLATFORM%/levels/...rpf`).
+    /// The `filename` element as written, with its device prefix and `%PLATFORM%` placeholder unexpanded
+    /// (`dlcMPHeist:/%PLATFORM%/levels/...rpf`).
     pub filename: String,
     /// The data file's type (`RPF_FILE`, `GTXD_PARENTING_DATA`, ...).
     pub file_type: String,
@@ -169,11 +170,11 @@ pub struct DataFile {
 /// A change to the map data, inside a change set.
 #[derive(Clone, Debug, Default)]
 pub struct MapChange {
-    /// The map the change applies to.
+    /// The `associatedMap` element: the name of the map the change applies to, as written.
     pub associated_map: String,
-    /// Data files the change enables.
+    /// The `filesToEnable` entries: data files the change enables, as written.
     pub files_to_enable: Vec<String>,
-    /// Data files the change disables.
+    /// The `filesToDisable` entries: data files the change disables, as written.
     pub files_to_disable: Vec<String>,
     /// Archives the change invalidates, with those overlaying them.
     pub files_to_invalidate: Vec<String>,
@@ -184,11 +185,11 @@ pub struct MapChange {
 pub struct ChangeSet {
     /// The change set's name; several may share one, each for its own level.
     pub name: String,
-    /// Data files the change set enables.
+    /// The `filesToEnable` entries: data files the change set enables, as written.
     pub files_to_enable: Vec<String>,
-    /// Data files the change set disables.
+    /// The `filesToDisable` entries: data files the change set disables, as written.
     pub files_to_disable: Vec<String>,
-    /// Archives the change set invalidates.
+    /// The `filesToInvalidate` entries: archives the change set invalidates, as written.
     pub files_to_invalidate: Vec<String>,
     /// The changes to the map data the change set makes.
     pub map_changes: Vec<MapChange>,
@@ -199,9 +200,9 @@ pub struct ChangeSet {
 /// A pack's content file.
 #[derive(Clone, Debug, Default)]
 pub struct Content {
-    /// The data files the pack defines.
+    /// The data files the pack defines, in document order.
     pub data_files: Vec<DataFile>,
-    /// The change sets the pack defines.
+    /// The change sets the pack defines, in document order.
     pub change_sets: Vec<ChangeSet>,
 }
 

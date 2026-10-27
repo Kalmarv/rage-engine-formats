@@ -41,8 +41,7 @@
 //!
 //! Opening an install (`archive::archive_set::Install::open`) takes the folder and the caller's key material; see
 //! `examples/list_install.rs`.
-#![deny(clippy::disallowed_methods, clippy::disallowed_types)]
-#![warn(missing_docs)]
+#![deny(clippy::disallowed_methods, clippy::disallowed_types, missing_docs)]
 // Every read is of bytes a file chose: no unchecked index, slice, arithmetic or narrowing cast (the tests build their
 // fixtures with them).
 #![cfg_attr(
@@ -102,7 +101,7 @@ pub enum Error {
     /// The key material is missing, the wrong size or does not match its digest.
     #[error("key material: {0}")]
     Keys(String),
-    /// A file could not be read.
+    /// Reading a file or folder failed (the archive and key readers are the only code that touches the file system).
     #[error("I/O: {0}")]
     Io(#[from] std::io::Error),
     /// A compressed block did not inflate.

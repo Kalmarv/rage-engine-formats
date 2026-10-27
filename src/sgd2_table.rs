@@ -52,7 +52,7 @@ pub struct TableResource {
     pub constants: u8,
     /// The byte after the count, as stored.
     pub class: u8,
-    /// The register space.
+    /// The register space (D3D12 `RegisterSpace`).
     pub space: u16,
     /// The six bytes after the space, as stored.
     pub unknown_8: [u8; 6],
@@ -60,25 +60,24 @@ pub struct TableResource {
     pub size: u32,
     /// The u16 after the size, as stored.
     pub unknown_18: u16,
-    /// The hash of the program's name for it (the joaat of a name in the table), and of the shader's current name (0
-    /// when it has none; not a name of the table).
+    /// The joaat hash of the program's own name for the resource, one of the names at the end of the table.
     pub name: u32,
     /// The hash of the shader's current name for it (0 when it has none).
     pub second_name: u32,
 }
 
-/// One constant record.
+/// One constant record of a program's table (24 bytes).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TableConstant {
     /// The low byte the value's type, the rest as stored.
     pub flags: u32,
-    /// Byte offset in its constant buffer.
+    /// Byte offset of the constant in its constant buffer.
     pub offset: u16,
     /// The u16 after the offset, as stored.
     pub id: u16,
-    /// The u32 after the id, as stored.
+    /// The u32 at record byte 8, as stored (its meaning is not known).
     pub x: u32,
-    /// The u32 after that, as stored.
+    /// The u32 at record byte 12, as stored (its meaning is not known).
     pub s: u32,
     /// The hash of the program's name for the constant.
     pub name: u32,
@@ -94,16 +93,16 @@ impl TableConstant {
     }
 }
 
-/// A program's table.
+/// A program's table: its resource records, the constant records they own and the names.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgramTable {
     /// The u16 after the counts, as stored.
     pub unknown_6: u16,
-    /// The resource records, in order.
+    /// The resource records, in record order.
     pub resources: Vec<TableResource>,
     /// Every constant record, in the order of the resources that own them.
     pub constants: Vec<TableConstant>,
-    /// The names, in order.
+    /// The NUL-terminated names at the end of the table, in order.
     pub names: Vec<String>,
 }
 
@@ -121,7 +120,8 @@ fn u32_at(b: &[u8], at: usize) -> Option<u32> {
         .map(u32::from_le_bytes)
 }
 
-/// Read a program's table.
+/// Reads a program's table from [`crate::sgd2::Program::tables`]. The record counts must fit the bytes and the resources'
+/// constant counts must sum to the header's; names that are not NUL-terminated ASCII are an error.
 pub fn parse(bytes: &[u8]) -> Result<ProgramTable> {
     let fail = |at: usize, why: &str| invalid("sgd2 program table", at as u64, why);
     let (Some(n_resources), Some(n_constants), Some(unknown_6)) =

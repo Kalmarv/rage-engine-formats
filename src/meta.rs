@@ -130,11 +130,11 @@ impl Kind {
 /// A field description.
 #[derive(Clone, Debug)]
 pub struct Field {
-    /// The field's name hash.
+    /// The field's name hash (joaat_exact of the identifier).
     pub name: u32,
     /// The field's byte offset in its structure.
     pub offset: u32,
-    /// The field's type.
+    /// The field's kind, decoded from the description's type code.
     pub kind: Kind,
     /// The description's byte 9, kept as stored (its meaning is not known).
     pub byte9: u8,
@@ -144,14 +144,14 @@ pub struct Field {
     pub ref_key: u32,
 }
 
-/// A structure description.
+/// A structure description: its name, size and the fields at their offsets.
 #[derive(Clone, Debug)]
 pub struct StructInfo {
-    /// The structure's name hash.
+    /// The structure's name hash (joaat_exact of the identifier).
     pub name: u32,
     /// The description's key word, as stored.
     pub key: u32,
-    /// The structure's size in bytes.
+    /// The structure's size in bytes, as the description states it.
     pub size: u32,
     /// The fields, in description order.
     pub fields: Vec<Field>,
@@ -160,11 +160,11 @@ pub struct StructInfo {
 /// An enum description: value names and values.
 #[derive(Clone, Debug)]
 pub struct EnumInfo {
-    /// The enum's name hash.
+    /// The enum's name hash (joaat_exact of the identifier).
     pub name: u32,
     /// The description's key word, as stored.
     pub key: u32,
-    /// The enum's `(name hash, value)` pairs.
+    /// The enum's `(name hash, value)` pairs, in description order.
     pub values: Vec<(u32, i32)>,
 }
 
@@ -173,7 +173,7 @@ pub struct EnumInfo {
 pub struct Block {
     /// What the block holds: the name hash of its structure, or the code of its primitive or pointer type.
     pub name: u32,
-    /// The block's bytes.
+    /// The block's bytes, as stored; a block is an array of its `name` type.
     pub data: Vec<u8>,
 }
 
@@ -182,13 +182,13 @@ pub struct Block {
 pub struct Meta {
     /// The resource's own name, when it carries one.
     pub name: Option<String>,
-    /// The index of the root block.
+    /// The index in `blocks` of the root block (the one [`Meta::root`] decodes).
     pub root: usize,
-    /// The structure descriptions, by name hash.
+    /// The structure descriptions, keyed by name hash.
     pub structs: BTreeMap<u32, StructInfo>,
-    /// The enum descriptions, by name hash.
+    /// The enum descriptions, keyed by name hash.
     pub enums: BTreeMap<u32, EnumInfo>,
-    /// The data blocks, in file order.
+    /// The data blocks, in file order; a pointer value names a block by its 1-based position here.
     pub blocks: Vec<Block>,
 }
 
@@ -241,7 +241,7 @@ pub enum Value {
 /// A decoded structure: its name and its fields in description order (array-info fields left out).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Struct {
-    /// The structure's name hash.
+    /// The structure's name hash (joaat_exact of the identifier).
     pub name: u32,
     /// The fields as `(name hash, value)`, in description order.
     pub fields: Vec<(u32, Value)>,
@@ -418,14 +418,15 @@ impl Meta {
         })
     }
 
-    /// The structure description of this name.
+    /// The description of structure `name` (a name hash), or an error when the resource has none.
     pub fn struct_info(&self, name: u32) -> Result<&StructInfo> {
         self.structs
             .get(&name)
             .ok_or_else(|| err(0, format!("no description of structure {name:#010x}")))
     }
 
-    /// Decodes the root block's first structure.
+    /// Decodes the root block's first structure into a [`Struct`] tree, following every array and pointer by the
+    /// descriptions; an error when anything is not accounted for.
     pub fn root(&self) -> Result<Struct> {
         self.root_covered().map(|(s, _)| s)
     }
@@ -1064,7 +1065,7 @@ impl Struct {
         }
     }
 
-    /// An enum or flags value.
+    /// The enum or flags field `name` as its stored integer value; an error if the field is missing or of another kind.
     pub fn enum_value(&self, name: &str) -> Result<i32> {
         match self.get(name)? {
             Value::Enum { value, .. } => Ok(*value),
@@ -1080,7 +1081,7 @@ impl Struct {
         }
     }
 
-    /// An array of hashes.
+    /// The array field `name` as name hashes; an error if the field is missing, or the array holds anything else.
     pub fn hashes(&self, name: &str) -> Result<Vec<u32>> {
         self.array(name)?
             .iter()

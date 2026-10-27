@@ -41,9 +41,9 @@ use crate::{Error, Result, invalid};
 /// A file of the install: archive index and entry index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileRef {
-    /// Index into [`Install::archives`].
+    /// Index into [`Install::archives`] of the archive that holds the file.
     pub archive: usize,
-    /// Index into that archive's [`Archive::entries`].
+    /// Index into that archive's [`Archive::entries`] of the file's entry.
     pub entry: usize,
 }
 
@@ -139,7 +139,8 @@ impl Install {
         self.by_path.get(path).copied()
     }
 
-    /// The file entry at this path.
+    /// The file entry at `path` (lowercase, `\`-separated, the archive's path then the file's); `None` when the install
+    /// has no such file.
     pub fn file(&self, path: &str) -> Option<FileRef> {
         self.files.get(path).copied()
     }
@@ -166,7 +167,8 @@ impl Install {
         })
     }
 
-    /// A binary file's contents.
+    /// A binary file's contents, decrypted and, when the archive compresses it, inflated. An error for an entry that is
+    /// not a binary file.
     pub fn binary(&self, f: FileRef, keys: &Keys) -> Result<Vec<u8>> {
         let a = self.archive_of(f)?;
         a.binary(&mut File::open(&a.file)?, f.entry, keys)
@@ -179,7 +181,8 @@ impl Install {
         a.stored(&mut File::open(&a.file)?, f.entry, keys)
     }
 
-    /// A resource file (RSC7), decoded.
+    /// A resource file (RSC7), decoded. An error for an entry that is not a resource, or one whose pages do not inflate
+    /// to the sizes its flags give.
     pub fn resource(&self, f: FileRef, keys: &Keys) -> Result<crate::resource::Resource> {
         let a = self.archive_of(f)?;
         a.resource(&mut File::open(&a.file)?, f.entry, keys)
@@ -198,13 +201,13 @@ impl std::fmt::Debug for Install {
 /// A pack: where its archive is, its setup and content.
 #[derive(Clone, Debug)]
 pub struct Pack {
-    /// The pack's archive (`...\dlcpacks\<name>\dlc.rpf`).
+    /// The pack's archive path in the install (`...\dlcpacks\<name>\dlc.rpf`).
     pub archive: String,
-    /// The pack's `setup2.xml`.
+    /// The pack's `setup2.xml`, read.
     pub setup: Setup,
-    /// The pack's content file.
+    /// The pack's content file, read.
     pub content: Content,
-    /// Subpack archives (`dlc1.rpf`, ...) that exist.
+    /// Subpack archive paths (`dlc1.rpf`, ...) that exist in the install.
     pub subpacks: Vec<String>,
 }
 
@@ -212,7 +215,7 @@ pub struct Pack {
 pub struct ArchiveSet {
     /// The install the set was built over.
     pub install: Install,
-    /// Packs in mount order.
+    /// Packs in mount order (lowest `order` first, ties by `minor_order`).
     pub packs: Vec<Pack>,
     /// Map archives in mount order, by mounted path (`x64/levels/gta5/...rpf`, `dlcmpheist:/x64/...rpf`).
     pub map_archives: IndexMap<String, usize>,
@@ -277,9 +280,9 @@ pub const LEVEL: &str = "MO_JIM_L11";
 /// anything belongs to a multiplayer pack).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MapState {
-    /// Story mode's map.
+    /// Story mode's map: the base map with the packs' startup change sets.
     Story,
-    /// GTA Online's map.
+    /// GTA Online's map: story mode's plus the `GROUP_MAP` change sets.
     Online,
 }
 

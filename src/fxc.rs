@@ -27,17 +27,17 @@ const CONTAINER_MAGIC: u32 = 0x4342_5844;
 /// The stages of an effect, in the order the file lists their groups.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ProgramStage {
-    /// The vertex shader stage.
+    /// Vertex programs: the first group in the file.
     Vertex,
-    /// The pixel shader stage.
+    /// Pixel programs: the second group.
     Pixel,
-    /// The compute shader stage.
+    /// Compute programs: the third group.
     Compute,
-    /// The domain shader stage.
+    /// Domain programs: the fourth group.
     Domain,
-    /// The geometry shader stage.
+    /// Geometry programs: the fifth group; each carries an extra byte ([`Shader::geometry_byte`]).
     Geometry,
-    /// The hull shader stage.
+    /// Hull programs: the sixth group.
     Hull,
 }
 impl ProgramStage {
@@ -55,18 +55,18 @@ impl ProgramStage {
 /// A preset parameter: a named value the effect starts with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PresetParam {
-    /// The parameter's name.
+    /// The parameter's name, a length-prefixed ASCII string.
     pub name: String,
     /// The byte between the name and the value, as stored.
     pub unused: u8,
-    /// The value as stored.
+    /// The parameter's value word, as stored (not typed: integer, float bits or handle is the caller's reading).
     pub value: u32,
 }
 
 /// One shader program.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shader {
-    /// The program's name.
+    /// The program's name; empty when the file carries the name as [`Shader::second_name`].
     pub name: String,
     /// A second name, where the first is empty (the file then carries both).
     pub second_name: Option<String>,
@@ -74,7 +74,7 @@ pub struct Shader {
     pub variables: Vec<String>,
     /// The constant buffers it reads: name and register.
     pub buffers: Vec<(String, u16)>,
-    /// A geometry shader's extra byte.
+    /// The extra byte a geometry-stage program carries after its buffer list; `None` for the other stages.
     pub geometry_byte: Option<u8>,
     /// The Direct3D container, as stored (empty when the file stores none).
     pub bytecode: Vec<u8>,
@@ -87,51 +87,51 @@ pub struct Shader {
 pub struct Group {
     /// The count byte was zero and another byte followed it.
     pub extra_count_byte: bool,
-    /// The group's name.
+    /// The group's name, a length-prefixed ASCII string.
     pub name: String,
     /// Two bytes after the name, as stored.
     pub unknown_bytes: [u8; 2],
-    /// The word after them, as stored.
+    /// The four bytes after the unknown bytes, little endian, as stored (meaning not known).
     pub unknown_word: u32,
-    /// The group's programs.
+    /// The group's programs: one fewer than the stored count, which counts one extra.
     pub shaders: Vec<Shader>,
 }
 
 /// A constant buffer of the effect: its size, the register it has in each stage (one per [`ProgramStage`]) and name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstantBuffer {
-    /// The buffer's size in bytes.
+    /// The buffer's size in bytes (u32).
     pub size: u32,
     /// The register it has in each stage, in [`ProgramStage::ALL`] order.
     pub registers: [u16; 6],
-    /// The buffer's name.
+    /// The buffer's name, a length-prefixed ASCII string.
     pub name: String,
 }
 
 /// A parameter of a variable.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParamValue {
-    /// An integer.
+    /// A parameter stored as a signed 32-bit integer (type byte 0).
     Int(i32),
-    /// A float.
+    /// A parameter stored as a 32-bit float (type byte 1).
     Float(f32),
-    /// A string.
+    /// A parameter stored as a length-prefixed ASCII string (type byte 2).
     Text(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 /// A named parameter of a variable, as stored.
 pub struct VariableParam {
-    /// The parameter's name.
+    /// The parameter's name, a length-prefixed ASCII string.
     pub name: String,
-    /// The parameter's value.
+    /// The parameter's value, typed by the byte that precedes it in the file.
     pub value: ParamValue,
 }
 
 /// A variable of the effect: a constant, a texture, a buffer.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Variable {
-    /// The variable's kind byte, as stored.
+    /// The variable's kind byte, as stored; it says whether `values` are integers or floats.
     pub kind: u8,
     /// The array count byte, as stored.
     pub count: u8,
@@ -139,9 +139,9 @@ pub struct Variable {
     pub slot: u8,
     /// The group byte, as stored.
     pub group: u8,
-    /// The variable's name.
+    /// The variable's name, a length-prefixed ASCII string.
     pub name: String,
-    /// A second name, as stored.
+    /// The second name string the file carries after the first,, as stored.
     pub name2: String,
     /// The offset byte, as stored.
     pub offset: u8,
@@ -151,7 +151,7 @@ pub struct Variable {
     pub unused: [u8; 2],
     /// The hash of the constant buffer's name.
     pub constant_buffer: u32,
-    /// The variable's named parameters.
+    /// The variable's named parameters, in stored order.
     pub params: Vec<VariableParam>,
     /// The default value's words as stored (integers and handles are integers, the rest floats: `kind` says).
     pub values: Vec<u32>,
@@ -169,18 +169,18 @@ pub struct Pass {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A named technique: the passes it draws with.
 pub struct Technique {
-    /// The technique's name.
+    /// The technique's name, a length-prefixed ASCII string.
     pub name: String,
-    /// The passes, in order.
+    /// The passes, in stored order.
     pub passes: Vec<Pass>,
 }
 
 /// A compiled effect.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fxc {
-    /// The effect's vertex type word.
+    /// The effect's vertex type word (u32), as stored.
     pub vertex_type: u32,
-    /// The effect's preset parameters.
+    /// The effect's preset parameters, in stored order.
     pub presets: Vec<PresetParam>,
     /// The six stages' groups, in [`ProgramStage::ALL`] order.
     pub groups: [Group; 6],
@@ -188,12 +188,12 @@ pub struct Fxc {
     pub constant_buffers: [Vec<ConstantBuffer>; 2],
     /// The variables, as the file's two lists hold them (each list is read after its buffers).
     pub variables: [Vec<Variable>; 2],
-    /// The techniques.
+    /// The techniques, in stored order.
     pub techniques: Vec<Technique>,
 }
 
 impl Fxc {
-    /// The programs of a stage.
+    /// The programs of a stage, in group order (an empty slice for none).
     pub fn shaders(&self, stage: ProgramStage) -> &[Shader] {
         self.groups
             .get(stage as usize)

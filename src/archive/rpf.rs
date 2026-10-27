@@ -22,7 +22,7 @@ use crate::archive::ng::{aes_decrypt, ng_decrypt};
 use crate::resource::{self, PageFlags, Resource};
 use crate::{Result, invalid};
 
-/// The "RPF7" magic, little-endian.
+/// The first four bytes of an RPF7 archive, `RPF7`, read as a little-endian u32.
 pub const MAGIC: u32 = 0x5250_4637;
 const BLOCK: u64 = 512;
 
@@ -52,9 +52,9 @@ pub enum Encryption {
     None,
     /// Word `0x4E45504F` (the bytes "OPEN"): a table of contents left in the clear by an editing tool.
     Open,
-    /// Word `0x0FFFFFF9`.
+    /// Word `0x0FFFFFF9`: AES-encrypted.
     Aes,
-    /// Word `0x0FEFFFFF`.
+    /// Word `0x0FEFFFFF`: NG-encrypted.
     Ng,
 }
 
@@ -70,7 +70,7 @@ impl Encryption {
     }
 }
 
-/// What an entry is.
+/// What an entry is: a directory, a binary file or a resource.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EntryKind {
     /// Entries `first .. first + count` are its children.
@@ -111,18 +111,18 @@ pub struct Entry {
     pub name: String,
     /// Lowercase, from the archive's path down, joined by `\`.
     pub path: String,
-    /// What the entry is.
+    /// What the entry is; for a file, where its bytes lie in the archive.
     pub kind: EntryKind,
 }
 
 /// An archive: where it lies in which file, and its table of contents.
 #[derive(Clone, Debug)]
 pub struct Archive {
-    /// The physical file it is in.
+    /// The physical file the archive lies in.
     pub file: std::path::PathBuf,
-    /// Its first byte in that file.
+    /// The offset in that file of the archive's first byte.
     pub start: u64,
-    /// Its length in bytes.
+    /// The archive's length in bytes.
     pub size: u64,
     /// Its own name (the cipher keys by it).
     pub name: String,

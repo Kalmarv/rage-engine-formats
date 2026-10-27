@@ -221,7 +221,8 @@ impl PedVariations {
         Ok(())
     }
 
-    /// The component a slot has.
+    /// The component data of component slot `slot` (an index into [`COMPONENT_SLOTS`]); `None` when `slot` is out of
+    /// range or the ped has no such slot.
     pub fn component(&self, slot: usize) -> Option<&PedComponent> {
         self.components.get(usize::from((*self.slots.get(slot)?)?))
     }

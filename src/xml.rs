@@ -18,7 +18,7 @@ pub struct Element {
     /// The byte offset of the element's start tag in the document it was read from (for [`crate::rbf`]'s elements, of
     /// its first record): where errors about it point.
     pub offset: u64,
-    /// The element's name as written.
+    /// The element's name as written (its case is kept; lookups by name ignore case).
     pub name: String,
     /// Its attributes in document order, entities resolved.
     pub attrs: Vec<(String, String)>,
@@ -29,7 +29,7 @@ pub struct Element {
 }
 
 impl Element {
-    /// An attribute by name.
+    /// The value of the first attribute called `name`, matched with case; `None` if there is none.
     pub fn attr(&self, name: &str) -> Option<&str> {
         self.attrs
             .iter()
@@ -52,7 +52,7 @@ impl Element {
         self.child(name).and_then(|c| c.attr("value"))
     }
 
-    /// The `Item` children (any case).
+    /// The children named `Item`, in any case, in document order.
     pub fn items(&self) -> impl Iterator<Item = &Element> {
         self.children
             .iter()

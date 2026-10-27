@@ -38,11 +38,11 @@ pub struct ListedFile<'a> {
     pub archive: &'a str,
     /// The file's own path: the archive's path, then the file's path in it (lowercase, `\`).
     pub path: &'a str,
-    /// Its name as stored.
+    /// Its name as stored in the archive's table of contents (the last component of `path`, original case).
     pub name: &'a str,
     /// The lowercase extension of its name without the dot (`ydr`, `rpf`); empty when it has none.
     pub extension: &'a str,
-    /// How the archive stores the file.
+    /// How the archive stores the file: a plain binary or a resource with its system and graphics page sizes.
     pub storage: Storage,
 }
 

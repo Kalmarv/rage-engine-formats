@@ -4,7 +4,8 @@
 //! correspondence is checked on real data (every texture's data size from its format, size and levels equals its stored
 //! block count times block size).
 
-/// A buffer format code, as stored.
+/// A buffer format code: the byte a texture or vertex declaration stores. The code is kept whether or not this crate
+/// knows its layout (see [`BufferFormat::texel`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BufferFormat(pub u8);
 
@@ -12,9 +13,9 @@ pub struct BufferFormat(pub u8);
 /// `block_bytes` bytes (one texel per block for the uncompressed formats).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Texel {
-    /// Texels across one block.
+    /// Texels across one block (4 for the block-compressed formats, 1 for the others).
     pub block_width: u32,
-    /// Texels down one block.
+    /// Texels down one block (4 for the block-compressed formats, 1 for the others).
     pub block_height: u32,
     /// Bytes of one block.
     pub block_bytes: u32,

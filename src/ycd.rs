@@ -33,7 +33,7 @@ fn err(at: u64, detail: impl ToString) -> crate::Error {
 /// byte whose meaning is not known, as stored.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AnimationBoneId {
-    /// The bone id.
+    /// The bone id (u16), as stored.
     pub bone: u16,
     /// The byte whose meaning is not known, as stored.
     pub unknown: u8,
@@ -44,15 +44,15 @@ pub struct AnimationBoneId {
 /// One sequence of an animation: a span of its frames with the channel data of every track, as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sequence {
-    /// The sequence's id word, as stored.
+    /// The sequence's id word, as stored (its meaning is not known).
     pub id: u32,
     /// The offset in `data` of the frame data.
     pub frame_offset: u32,
     /// The offset of the root motion references, counted from 32 bytes before `data`.
     pub root_motion_refs_offset: u32,
-    /// How many frames the sequence spans.
+    /// How many frames the sequence spans (u16 at 0x16 of the header).
     pub frames: u16,
-    /// Bytes of one frame item.
+    /// Bytes of one frame item (u16 at 0x18 of the header).
     pub frame_length: u16,
     /// The u16 at 0x1A of the header, as stored.
     pub indirect_quantize_ints: u16,
@@ -62,28 +62,28 @@ pub struct Sequence {
     pub chunk_size: u8,
     /// The root motion reference counts: two counts, one in each nibble.
     pub root_motion_ref_counts: u8,
-    /// The channel data, `DataLength` bytes.
+    /// The channel data: the sequence's `DataLength` bytes, undecoded; [`crate::ycd_channels`] reads them.
     pub data: Vec<u8>,
 }
 
 /// An animation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Animation {
-    /// Bytes 0x10 and 0x11 and the word at 0x1C, as stored (their meaning is not known).
+    /// The bytes at 0x10 and 0x11 of the animation, as stored (their meaning is not known).
     pub flags: [u8; 2],
-    /// The word at 0x1C, as stored.
+    /// The u32 at 0x1C of the animation, as stored (its meaning is not known).
     pub unknown_1c: u32,
-    /// How many frames the animation has.
+    /// How many frames the animation has (u16 at 0x14).
     pub frames: u16,
-    /// The most frames a sequence spans.
+    /// The most frames a sequence spans (u16 at 0x16).
     pub sequence_frame_limit: u16,
-    /// The animation's duration in seconds.
+    /// The animation's duration in seconds (f32 at 0x18).
     pub duration: f32,
     /// The size of the largest sequence block, as stored.
     pub max_sequence_block: u32,
-    /// The usage count, as stored.
+    /// The usage count (u32 at 0x3C), as stored.
     pub usage_count: u32,
-    /// The animation's sequences, in order.
+    /// The animation's sequences, in stored order.
     pub sequences: Vec<Sequence>,
     /// The bone tracks, which a sequence's channels follow in order.
     pub bone_ids: Vec<AnimationBoneId>,
@@ -94,18 +94,18 @@ pub struct Animation {
 pub struct ClipPlay {
     /// The animation's hash in the dictionary's animation map.
     pub animation: u32,
-    /// The start time in seconds.
+    /// The start time in seconds (f32).
     pub start: f32,
-    /// The end time in seconds.
+    /// The end time in seconds (f32).
     pub end: f32,
-    /// The playback rate.
+    /// The playback rate (f32), as stored.
     pub rate: f32,
 }
 
 /// A clip: a name (its path as the game spells it) and what it plays.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Clip {
-    /// The clip's hash.
+    /// The clip's name hash, the key the dictionary's clip map stores it under.
     pub hash: u32,
     /// The clip's name, its path as the game spells it.
     pub name: String,
@@ -124,7 +124,7 @@ pub struct Clip {
 pub struct ClipDictionary {
     /// Each animation with its hash, in the animation map's order.
     pub animations: Vec<(u32, Animation)>,
-    /// The clips, in stored order.
+    /// The clips, in the clip map's stored order.
     pub clips: Vec<Clip>,
 }
 

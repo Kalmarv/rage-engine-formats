@@ -29,21 +29,21 @@ fn err(at: u64, detail: impl ToString) -> crate::Error {
 pub struct BoundHeader {
     /// 0 sphere, 1 capsule, 3 box, 4 geometry, 8 geometry with a BVH, 10 composite, 12 disc, 13 cylinder, 15 cloth.
     pub kind: u8,
-    /// The bounding sphere's radius (at 0x14).
+    /// The bounding sphere's radius (f32 at 0x14).
     pub sphere_radius: f32,
-    /// The bounding sphere's centre (at 0x50).
+    /// The bounding sphere's centre (3 x f32 at 0x50).
     pub sphere_centre: [f32; 3],
     /// The bounding box's minimum corner (at 0x30).
     pub box_min: [f32; 3],
     /// The bounding box's maximum corner (at 0x20).
     pub box_max: [f32; 3],
-    /// The bounding box's centre (at 0x40).
+    /// The bounding box's centre (3 x f32 at 0x40).
     pub box_centre: [f32; 3],
-    /// The collision margin (at 0x2C).
+    /// The collision margin (f32 at 0x2C).
     pub margin: f32,
     /// The material of a primitive bound (sphere, capsule, box, disc, cylinder): its first byte.
     pub material: [u8; 4],
-    /// The volume as stored (at 0x6C).
+    /// The volume (f32 at 0x6C), as stored.
     pub volume: f32,
 }
 
@@ -90,7 +90,7 @@ pub enum Polygon {
     },
 }
 
-/// A geometry bound's contents.
+/// A geometry bound's contents: vertices, polygons and the per-polygon materials.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Geometry {
     /// Positions in the bound's space: stored as 16-bit integers times `quantum` plus `centre`.
@@ -99,7 +99,7 @@ pub struct Geometry {
     pub quantum: [f32; 3],
     /// The offset added to the scaled vertex integers.
     pub centre: [f32; 3],
-    /// The polygons, indexing `vertices`.
+    /// The polygons, whose vertex indices index `vertices`; one per entry of `polygon_materials`.
     pub polygons: Vec<Polygon>,
     /// Material records (two words each: the material type in the low byte of the first, procedural id, room, ped
     /// density, flags, colour index as stored).
@@ -114,7 +114,7 @@ pub struct Geometry {
 /// with the flag words stored beside it.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Child {
-    /// The child's bound.
+    /// The child's bound, read the same way (composites may nest to a depth of 8).
     pub bound: Box<Bound>,
     /// The child's transform: columns x, y, z and the translation, in the composite's space.
     pub transform: [[f32; 3]; 4],
@@ -127,7 +127,7 @@ pub struct Child {
 /// A bound: its header and its contents.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Bound {
-    /// The fields every bound has.
+    /// The fields every bound has (the first 0x70 bytes of the bound).
     pub header: BoundHeader,
     /// What the bound holds beyond its header.
     pub contents: Contents,
@@ -138,9 +138,9 @@ pub struct Bound {
 pub enum Contents {
     /// A sphere, capsule, box, disc or cylinder: its shape is the header's.
     Primitive,
-    /// A mesh of polygons.
+    /// A mesh of polygons (kinds 4 and 8); the BVH of kind 8 is not read.
     Geometry(Geometry),
-    /// Child bounds with their transforms.
+    /// Child bounds with their transforms, flags and nested bounds.
     Composite(Vec<Child>),
     /// A kind this reader does not read (cloth), kept as its header.
     Other,
@@ -151,7 +151,8 @@ pub fn read_ybn(r: &Resource) -> Result<Bound> {
     read(r, 0x5000_0000, 0)
 }
 
-/// The bound at `p`.
+/// The bound whose structure starts at the virtual address `p` of `r`; `depth` is how deeply composites are nested
+/// above it (pass 0). A composite nested deeper than 8 is an error.
 pub fn read(r: &Resource, p: u64, depth: usize) -> Result<Bound> {
     if depth > 8 {
         return Err(err(p, "composites nest deeper than 8"));

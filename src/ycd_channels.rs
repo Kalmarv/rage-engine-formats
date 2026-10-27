@@ -120,14 +120,14 @@ impl ChannelKind {
     }
 }
 
-/// One channel of a track.
+/// One channel of a track: its decoded values, or for a cached quaternion component which component it supplies.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Channel {
     /// A quaternion's x, y, z as stored; w is [`root_of_rest`] of them.
     StaticQuaternion([f32; 3]),
     /// A vector of three floats, constant over the sequence.
     StaticVector3([f32; 3]),
-    /// A float, constant over the sequence.
+    /// A float that is the same on every frame of the sequence.
     StaticFloat(f32),
     /// A float a frame of the sequence's span, decoded from a raw, quantised, indirect or linear channel (`kind`).
     Frames {
@@ -153,7 +153,7 @@ pub fn root_of_rest(v: [f32; 3]) -> f32 {
 }
 
 impl Channel {
-    /// The channel's type.
+    /// The channel's type, the kind it was decoded from.
     pub fn kind(&self) -> ChannelKind {
         match self {
             Channel::StaticQuaternion(_) => ChannelKind::StaticQuaternion,
@@ -176,7 +176,7 @@ impl Channel {
 /// The channels of one bone track of a sequence, by index.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Track {
-    /// The channels, by index.
+    /// The channels of the track, in channel index order (a quaternion's components, a vector's, or a single float).
     pub channels: Vec<Channel>,
 }
 
@@ -274,7 +274,7 @@ impl Track {
 /// holds no channel for it).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
-    /// How many frames the sequence spans.
+    /// How many frames the sequence spans; every [`Channel::Frames`] holds this many values.
     pub frames: usize,
     /// The decoded tracks, by the animation's bone track index.
     pub tracks: Vec<Option<Track>>,

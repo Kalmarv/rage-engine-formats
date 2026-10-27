@@ -46,7 +46,7 @@ use crate::le::LE;
 use crate::{Result, invalid};
 use primase_foundations::bytes::Field;
 
-/// The magic `SGD2`.
+/// The first four bytes of the file: `SGD2`.
 pub const MAGIC: [u8; 4] = *b"SGD2";
 /// The tag bytes a program carries in the file seen: `2` on 12,291 of its 12,405 programs, `A` on 44 and `B` on 70.
 /// What the letter says is not known (the programs it separates are laid out alike).
@@ -67,14 +67,14 @@ pub const GROUP_STAGES: [Option<ProgramStage>; 8] = [
 /// The groups an effect lists programs of, in the order of its lists.
 pub const EFFECT_LISTS: [usize; 6] = [0, 1, 2, 3, 4, 5];
 
-/// One shader program.
+/// One shader program of the database: a name, a tag byte, a Direct3D 12 container and the tables after it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Program<'a> {
-    /// The program's name.
+    /// The program's name, the ASCII string that starts its record.
     pub name: &'a str,
     /// The byte after the name, as stored.
     pub tag: u8,
-    /// The Direct3D 12 container, as stored.
+    /// The Direct3D 12 container (DXIL) bytes, as stored.
     pub container: &'a [u8],
     /// The fixed table after the container, as stored.
     pub table: &'a [u8],
@@ -82,10 +82,10 @@ pub struct Program<'a> {
     pub tables: &'a [u8],
 }
 
-/// One effect: the programs it uses.
+/// One effect: its name and the programs it uses, per stage, by index into the groups.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Effect<'a> {
-    /// The effect's name.
+    /// The effect's name, the ASCII string that starts its record.
     pub name: &'a str,
     /// The word after the name (not a size).
     pub word: u32,
@@ -96,7 +96,7 @@ pub struct Effect<'a> {
     pub rest: &'a [u8],
 }
 
-/// The shader database.
+/// The shader database: the eight program groups and the effects that pick programs from them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sgd2<'a> {
     /// The eight groups, in [`GROUP_STAGES`] order.
@@ -106,7 +106,7 @@ pub struct Sgd2<'a> {
 }
 
 impl<'a> Sgd2<'a> {
-    /// The programs of a stage.
+    /// The programs of a stage (the group [`GROUP_STAGES`] assigns it); empty for a stage with no group.
     pub fn programs(&self, stage: ProgramStage) -> &[Program<'a>] {
         GROUP_STAGES
             .iter()
@@ -367,7 +367,8 @@ mod tests {
         }
         b
     }
-    /// What follows an effect's lists: a table kept as stored, the root signature marker, two sections and the name block.
+    /// What follows an effect's lists: a table kept as stored, the root signature marker, two sections and the name
+    /// block.
     fn tail(b: &mut Vec<u8>) {
         b.extend([0u8, 0, 1, 5, 0x40, 0x41]);
         b.extend(ROOT_SIGNATURES);

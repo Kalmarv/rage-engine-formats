@@ -16,10 +16,10 @@ use crate::sga::BufferFormat;
 use crate::{Result, invalid};
 use primase_foundations::bytes::View;
 
-/// A texture as stored.
+/// A texture of a dictionary (the 128-byte record), with the pixel data it points at.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Texture {
-    /// The texture's name as stored.
+    /// The texture's name, the NUL-terminated string at the pointer in the record's 0x28; empty when that pointer is 0.
     pub name: String,
     /// Width of the first level in texels.
     pub width: u16,
@@ -31,13 +31,13 @@ pub struct Texture {
     pub levels: u8,
     /// `sga` image dimension (1: 2D, 2: 3D, 3: cube, as stored).
     pub dimension: u8,
-    /// The pixel format.
+    /// The pixel format, the code at record byte 0x1F; reading refuses a code with no known block layout.
     pub format: BufferFormat,
-    /// The tile mode as stored.
+    /// The tile mode byte at 0x20, as stored (not interpreted: the data is not de-tiled).
     pub tile_mode: u8,
-    /// The flag word as stored.
+    /// The flag word at 0x10, as stored.
     pub flags: u32,
-    /// The usage word as stored.
+    /// The usage word at 0x40, as stored.
     pub usage: u32,
     /// The pixel data of every level (and slice), as stored.
     pub data: Vec<u8>,
