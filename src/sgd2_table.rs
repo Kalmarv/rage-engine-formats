@@ -100,7 +100,9 @@ pub struct ProgramTable {
     pub unknown_6: u16,
     /// The resource records, in record order.
     pub resources: Vec<TableResource>,
-    /// Every constant record, in the order of the resources that own them.
+    /// Every constant record, as stored: grouped by the resource that owns them, the groups in the order the
+    /// resources' names stand in [`names`](Self::names), which is not always record order; [`Self::constants_of`]
+    /// picks one resource's group.
     pub constants: Vec<TableConstant>,
     /// The NUL-terminated names at the end of the table, in order.
     pub names: Vec<String>,

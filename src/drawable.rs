@@ -141,23 +141,23 @@ pub struct Geometry {
 }
 
 impl Geometry {
-    /// The bytes of one element across all vertices, vertex after vertex.
-    pub fn element_bytes(&self, e: Element) -> Vec<u8> {
-        let size = e.format.element_size().expect("checked on reading");
-        let (stride, off) = (
-            usize::from(self.stride),
-            usize::try_from(e.offset).unwrap_or(usize::MAX),
-        );
+    /// The bytes of one element across all vertices, vertex after vertex, or `None` when the element's format has no
+    /// fixed size or the element does not lie within one stride (never for the elements this crate's readers return).
+    pub fn element_bytes(&self, e: Element) -> Option<Vec<u8>> {
+        let size = e.format.element_size()?;
+        let stride = usize::from(self.stride);
+        let start = usize::try_from(e.offset).ok()?;
+        let end = start.checked_add(size).filter(|&end| end <= stride)?;
         if stride == 0 {
-            return Vec::new();
+            return Some(Vec::new());
         }
-        // each vertex holds the element (checked on reading)
-        self.vertices
-            .chunks_exact(stride)
-            .filter_map(|v| v.get(off..off.checked_add(size)?))
-            .flatten()
-            .copied()
-            .collect()
+        Some(
+            self.vertices
+                .chunks_exact(stride)
+                .flat_map(|v| v.get(start..end).unwrap_or_default())
+                .copied()
+                .collect(),
+        )
     }
 }
 
@@ -1294,6 +1294,33 @@ fn pointer_list_u32(r: &Resource, at: u64) -> Result<Vec<u32>> {
 mod tests {
     use super::*;
     use crate::resource::PageFlags;
+
+    /// A hand-built element whose format has no size, or that runs past the stride, has no bytes rather than a panic.
+    #[test]
+    fn element_bytes_of_an_element_no_reader_returns_is_none() {
+        let element = |format, offset| Element {
+            slot: 0,
+            format: crate::sga::BufferFormat(format),
+            offset,
+        };
+        let g = Geometry {
+            shader: 0,
+            bounds: [[0.0; 4]; 2],
+            vertex_count: 2,
+            stride: 8,
+            elements: Vec::new(),
+            vertices: (0..16).collect(),
+            indices: Vec::new(),
+            bone_ids: Vec::new(),
+        };
+        assert_eq!(
+            g.element_bytes(element(0x18, 4)),
+            Some(vec![4, 5, 6, 7, 12, 13, 14, 15])
+        );
+        assert_eq!(g.element_bytes(element(0xFF, 0)), None);
+        assert_eq!(g.element_bytes(element(0x18, 6)), None);
+        assert_eq!(g.element_bytes(element(0x18, u32::MAX)), None);
+    }
 
     /// A bone's pose is its own transform, then its parents' up to the root: a child turned a quarter about z and moved
     /// 1 along its parent's x, under a root moved 10 along z, takes (1, 0, 0) to (1, 1, 10). A fragment's own pose of a

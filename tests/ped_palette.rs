@@ -44,7 +44,7 @@ struct Tally {
 /// An element's bytes as four-byte vertices.
 fn element(g: &Geometry, name: &str) -> Option<Vec<[u8; 4]>> {
     let e = g.elements.iter().find(|e| e.semantic() == name)?;
-    Some(g.element_bytes(*e).as_chunks::<4>().0.to_vec())
+    Some(g.element_bytes(*e)?.as_chunks::<4>().0.to_vec())
 }
 
 fn check(d: &Drawable, file: &str, name: &str, tally: &mut Tally) {
