@@ -29,14 +29,21 @@ fn err(at: u64, detail: impl ToString) -> crate::Error {
 pub struct BoundHeader {
     /// 0 sphere, 1 capsule, 3 box, 4 geometry, 8 geometry with a BVH, 10 composite, 12 disc, 13 cylinder, 15 cloth.
     pub kind: u8,
+    /// The bounding sphere's radius (at 0x14).
     pub sphere_radius: f32,
+    /// The bounding sphere's centre (at 0x50).
     pub sphere_centre: [f32; 3],
+    /// The bounding box's minimum corner (at 0x30).
     pub box_min: [f32; 3],
+    /// The bounding box's maximum corner (at 0x20).
     pub box_max: [f32; 3],
+    /// The bounding box's centre (at 0x40).
     pub box_centre: [f32; 3],
+    /// The collision margin (at 0x2C).
     pub margin: f32,
     /// The material of a primitive bound (sphere, capsule, box, disc, cylinder): its first byte.
     pub material: [u8; 4],
+    /// The volume as stored (at 0x6C).
     pub volume: f32,
 }
 
@@ -46,19 +53,41 @@ pub enum Polygon {
     /// Vertex indices (flags in the stored high bits taken off), neighbouring polygons per edge (`-1`: none, as
     /// stored), area.
     Triangle {
+        /// The three vertices.
         vertices: [u16; 3],
+        /// The flag bit stored in the top of each vertex word.
         flags: [u8; 3],
+        /// The neighbouring polygon across each edge, `-1` for none.
         edges: [i16; 3],
+        /// The triangle's area as stored (the low three bits of its first word cleared).
         area: f32,
     },
     /// A sphere: its centre vertex and radius.
-    Sphere { centre: u16, radius: f32 },
+    Sphere {
+        /// The sphere's centre vertex.
+        centre: u16,
+        /// The sphere's radius.
+        radius: f32,
+    },
     /// A capsule: the vertices of its two ends and its radius.
-    Capsule { ends: [u16; 2], radius: f32 },
+    Capsule {
+        /// The vertices of the capsule's two ends.
+        ends: [u16; 2],
+        /// The capsule's radius.
+        radius: f32,
+    },
     /// Four vertices: the corners of a box (three diagonally opposite pairs' ends).
-    Box { corners: [i16; 4] },
+    Box {
+        /// The four vertices.
+        corners: [i16; 4],
+    },
     /// A cylinder: the vertices of its two ends and its radius.
-    Cylinder { ends: [u16; 2], radius: f32 },
+    Cylinder {
+        /// The vertices of the cylinder's two ends.
+        ends: [u16; 2],
+        /// The cylinder's radius.
+        radius: f32,
+    },
 }
 
 /// A geometry bound's contents.
@@ -66,8 +95,11 @@ pub enum Polygon {
 pub struct Geometry {
     /// Positions in the bound's space: stored as 16-bit integers times `quantum` plus `centre`.
     pub vertices: Vec<[f32; 3]>,
+    /// The scale of the stored 16-bit vertex integers.
     pub quantum: [f32; 3],
+    /// The offset added to the scaled vertex integers.
     pub centre: [f32; 3],
+    /// The polygons, indexing `vertices`.
     pub polygons: Vec<Polygon>,
     /// Material records (two words each: the material type in the low byte of the first, procedural id, room, ped
     /// density, flags, colour index as stored).
@@ -82,16 +114,22 @@ pub struct Geometry {
 /// with the flag words stored beside it.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Child {
+    /// The child's bound.
     pub bound: Box<Bound>,
+    /// The child's transform: columns x, y, z and the translation, in the composite's space.
     pub transform: [[f32; 3]; 4],
+    /// The first flag words stored beside the child, as stored.
     pub flags: [u32; 2],
+    /// The second flag words stored beside the child, as stored.
     pub flags_2: [u32; 2],
 }
 
 /// A bound: its header and its contents.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Bound {
+    /// The fields every bound has.
     pub header: BoundHeader,
+    /// What the bound holds beyond its header.
     pub contents: Contents,
 }
 

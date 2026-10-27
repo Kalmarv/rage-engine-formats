@@ -68,7 +68,9 @@ fn named(s: &Struct, want: &str) -> Result<()> {
 /// One texture variation of a drawable: its id and distribution, as stored.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PedTexture {
+    /// The texture variation's id (`texId`).
     pub id: u8,
+    /// The variation's distribution weight as stored (`distribution`).
     pub distribution: u8,
 }
 
@@ -77,41 +79,55 @@ pub struct PedTexture {
 pub struct PedDrawable {
     /// `propMask`, as stored (which props the drawable hides, by the game's bits).
     pub prop_mask: u8,
+    /// How many alternatives the drawable has (`numAlternatives`).
     pub alternatives: u8,
+    /// The texture variations the drawable offers.
     pub textures: Vec<PedTexture>,
+    /// Whether the drawable owns its cloth (`clothData.ownsCloth`).
     pub owns_cloth: bool,
 }
 
 /// One component slot's data: how many texture variations it has and the drawables it offers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PedComponent {
+    /// How many texture variations the slot has (`numAvailTex`).
     pub textures: u8,
+    /// The drawables the slot offers.
     pub drawables: Vec<PedDrawable>,
 }
 
 /// A ped's variation info.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PedVariations {
+    /// `bHasTexVariations`.
     pub has_texture_variations: bool,
+    /// `bHasDrawblVariations`.
     pub has_drawable_variations: bool,
+    /// `bHasLowLODs`.
     pub has_low_lods: bool,
+    /// `bIsSuperLOD`.
     pub is_super_lod: bool,
     /// Per slot ([`COMPONENT_SLOTS`]), the index into [`PedVariations::components`] of its data; `None` for a slot the
     /// ped does not have (stored as 255).
     pub slots: [Option<u8>; 12],
+    /// The component data, as indexed by [`PedVariations::slots`].
     pub components: Vec<PedComponent>,
     /// The DLC pack's name hash (0: none).
     pub dlc_name: u32,
     /// How many selection sets and per-component records the info holds (their contents stay in the META tree).
     pub selection_sets: usize,
+    /// How many per-component records (`compInfos`) the info holds.
     pub component_infos: usize,
 }
 
 /// A drawable of the info and its entry in the ped's dictionary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PedEntry {
+    /// The component slot (an index into [`COMPONENT_SLOTS`]).
     pub slot: usize,
+    /// The drawable's index within the slot.
     pub drawable: usize,
+    /// The entry name's suffix letter, as [`entry_name`] builds it.
     pub suffix: char,
     /// The entry's index in the dictionary.
     pub entry: usize,

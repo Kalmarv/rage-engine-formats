@@ -63,6 +63,7 @@ pub struct Rasterizer {
     pub fill: u8,
     /// NONE = 1, FRONT = 2, BACK = 3.
     pub cull: u8,
+    /// Whether front faces wind counter-clockwise (0 or 1).
     pub front_counter_clockwise: u8,
     /// The f32 at byte 8: the polygon offset, 0 but on the two foam effects (-0.1 and 0.2); not named further.
     pub offset: f32,
@@ -73,23 +74,34 @@ pub struct Rasterizer {
 /// One face of a depth-stencil state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct StencilFace {
+    /// The operation when the stencil test fails.
     pub fail_op: u8,
+    /// The operation when the depth test fails.
     pub depth_fail_op: u8,
+    /// The operation when both tests pass.
     pub pass_op: u8,
+    /// The stencil comparison function.
     pub func: u8,
 }
 
 /// A depth-stencil state (D3D12 values).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct DepthStencil {
+    /// Whether the depth test is on (0 or 1).
     pub depth_enable: u8,
     /// 0 none, 1 all.
     pub depth_write_mask: u8,
+    /// The depth comparison function.
     pub depth_func: u8,
+    /// Whether the stencil test is on (0 or 1).
     pub stencil_enable: u8,
+    /// The stencil read mask.
     pub stencil_read_mask: u8,
+    /// The stencil write mask.
     pub stencil_write_mask: u8,
+    /// The stencil operations for front faces.
     pub front: StencilFace,
+    /// The stencil operations for back faces.
     pub back: StencilFace,
     /// The record's last 10 bytes, as stored.
     pub tail: [u8; 10],
@@ -98,13 +110,21 @@ pub struct DepthStencil {
 /// One render target of a blend state (D3D12 values).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct TargetBlend {
+    /// Whether blending is on for the target (0 or 1).
     pub enable: u8,
+    /// The source colour blend factor.
     pub src: u8,
+    /// The destination colour blend factor.
     pub dest: u8,
+    /// The colour blend operation.
     pub op: u8,
+    /// The source alpha blend factor.
     pub src_alpha: u8,
+    /// The destination alpha blend factor.
     pub dest_alpha: u8,
+    /// The alpha blend operation.
     pub op_alpha: u8,
+    /// The colour write mask.
     pub write_mask: u8,
 }
 
@@ -113,17 +133,24 @@ pub struct TargetBlend {
 pub struct Blend {
     /// The record's first 4 bytes, as stored.
     pub head: [u8; 4],
+    /// The eight render targets' blend states.
     pub targets: [TargetBlend; 8],
 }
 
 /// A sampler state (D3D12 values).
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct SamplerDesc {
+    /// The filter.
     pub filter: u8,
+    /// The address modes for u, v and w.
     pub address: [u8; 3],
+    /// The mip level of detail bias.
     pub mip_lod_bias: f32,
+    /// The maximum anisotropy.
     pub max_anisotropy: u8,
+    /// The comparison function.
     pub comparison_func: u8,
+    /// The maximum level of detail.
     pub max_lod: f32,
     /// The record, as stored.
     pub raw: Vec<u8>,
@@ -132,15 +159,23 @@ pub struct SamplerDesc {
 /// One pass: the programs it runs, each the 1-based position in the effect's list of that stage (0 for none).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Pass {
+    /// The vertex program.
     pub vertex: u8,
+    /// The pixel program.
     pub pixel: u8,
+    /// The geometry program.
     pub geometry: u8,
+    /// The domain program.
     pub domain: u8,
+    /// The hull program.
     pub hull: u8,
+    /// The compute program.
     pub compute: u8,
     /// The pass's records of the effect's tables.
     pub rasterizer: u8,
+    /// Which record of [`EffectTechniques::depth_stencil`] the pass uses, as stored.
     pub depth_stencil: u8,
+    /// Which record of [`EffectTechniques::blend`] the pass uses, as stored.
     pub blend: u8,
     /// The record, as stored.
     pub raw: Vec<u8>,
@@ -149,17 +184,24 @@ pub struct Pass {
 /// A technique: a name and its passes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Technique {
+    /// The technique's name.
     pub name: String,
+    /// The technique's passes.
     pub passes: Vec<Pass>,
 }
 
 /// An effect's techniques and the state tables before them.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EffectTechniques {
+    /// The rasterizer states.
     pub rasterizer: Vec<Rasterizer>,
+    /// The depth-stencil states.
     pub depth_stencil: Vec<DepthStencil>,
+    /// The blend states.
     pub blend: Vec<Blend>,
+    /// The sampler states.
     pub samplers: Vec<SamplerDesc>,
+    /// The techniques.
     pub techniques: Vec<Technique>,
 }
 

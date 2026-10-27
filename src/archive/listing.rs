@@ -11,9 +11,21 @@ use crate::archive::rpf::{Archive, Encryption, EntryKind};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Storage {
     /// A binary file: `stored` bytes in the archive (0: stored uncompressed, `size` bytes), `size` bytes once read.
-    Binary { stored: u32, size: u32, encrypted: bool },
+    Binary {
+        /// Bytes the file takes in the archive; 0 when it is stored uncompressed.
+        stored: u32,
+        /// Bytes the file holds once read.
+        size: u32,
+        /// Whether the stored bytes are under the archive's cipher.
+        encrypted: bool,
+    },
     /// A resource (RSC7): the bytes of its system and graphics pages once inflated.
-    Resource { system: u64, graphics: u64 },
+    Resource {
+        /// Bytes of the resource's system pages once inflated.
+        system: u64,
+        /// Bytes of the resource's graphics pages once inflated.
+        graphics: u64,
+    },
 }
 
 /// One file of the install.
@@ -30,6 +42,7 @@ pub struct ListedFile<'a> {
     pub name: &'a str,
     /// The lowercase extension of its name without the dot (`ydr`, `rpf`); empty when it has none.
     pub extension: &'a str,
+    /// How the archive stores the file.
     pub storage: Storage,
 }
 
@@ -57,11 +70,15 @@ pub struct ListedArchive<'a> {
     pub path: &'a str,
     /// The physical file it lies in, where it starts there and its length.
     pub file: &'a Path,
+    /// The offset of the archive's first byte in its physical file.
     pub start: u64,
+    /// The archive's length in bytes.
     pub size: u64,
+    /// The cipher on its table of contents.
     pub encryption: Encryption,
     /// How many files it holds directly, and how many of those are archives.
     pub files: usize,
+    /// How many of those files are archives themselves.
     pub archives: usize,
 }
 

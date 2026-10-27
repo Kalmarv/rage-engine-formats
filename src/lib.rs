@@ -42,6 +42,7 @@
 //! Opening an install (`archive::archive_set::Install::open`) takes the folder and the caller's key material; see
 //! `examples/list_install.rs`.
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
+#![warn(missing_docs)]
 // Every read is of bytes a file chose: no unchecked index, slice, arithmetic or narrowing cast (the tests build their
 // fixtures with them).
 #![cfg_attr(

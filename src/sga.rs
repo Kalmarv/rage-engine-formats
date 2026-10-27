@@ -12,8 +12,11 @@ pub struct BufferFormat(pub u8);
 /// `block_bytes` bytes (one texel per block for the uncompressed formats).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Texel {
+    /// Texels across one block.
     pub block_width: u32,
+    /// Texels down one block.
     pub block_height: u32,
+    /// Bytes of one block.
     pub block_bytes: u32,
     /// The colour values are sRGB-encoded (the `_SRGB` codes); otherwise linear.
     pub srgb: bool,

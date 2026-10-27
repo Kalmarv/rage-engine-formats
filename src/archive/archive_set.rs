@@ -41,7 +41,9 @@ use crate::{Error, Result, invalid};
 /// A file of the install: archive index and entry index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileRef {
+    /// Index into [`Install::archives`].
     pub archive: usize,
+    /// Index into that archive's [`Archive::entries`].
     pub entry: usize,
 }
 
@@ -49,7 +51,9 @@ pub struct FileRef {
 /// path index over every file entry.
 #[derive(Clone)]
 pub struct Install {
+    /// The folder the install was opened from.
     pub dir: PathBuf,
+    /// Every archive, in the order described above.
     pub archives: Vec<Archive>,
     by_path: BTreeMap<String, usize>,
     files: BTreeMap<String, FileRef>,
@@ -196,7 +200,9 @@ impl std::fmt::Debug for Install {
 pub struct Pack {
     /// The pack's archive (`...\dlcpacks\<name>\dlc.rpf`).
     pub archive: String,
+    /// The pack's `setup2.xml`.
     pub setup: Setup,
+    /// The pack's content file.
     pub content: Content,
     /// Subpack archives (`dlc1.rpf`, ...) that exist.
     pub subpacks: Vec<String>,
@@ -204,6 +210,7 @@ pub struct Pack {
 
 /// The mounted archives and the live file tables.
 pub struct ArchiveSet {
+    /// The install the set was built over.
     pub install: Install,
     /// Packs in mount order.
     pub packs: Vec<Pack>,
@@ -290,6 +297,7 @@ fn physical(install: &Install, pack: &Pack, patch: Option<&str>, path: &str) -> 
 /// A pack's enabled data file other than an archive (`GTXD_PARENTING_DATA`, metadata files, ...).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DataFileRef {
+    /// The data file's type as the content file names it (`GTXD_PARENTING_DATA`, ...).
     pub file_type: String,
     /// The mounted path (`dlcmpheist:/common/data/gtxd.meta`).
     pub path: String,

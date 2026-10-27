@@ -19,17 +19,27 @@ use primase_foundations::bytes::View;
 /// A texture as stored.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Texture {
+    /// The texture's name as stored.
     pub name: String,
+    /// Width of the first level in texels.
     pub width: u16,
+    /// Height of the first level in texels.
     pub height: u16,
+    /// The depth as stored: the data holds one copy of the levels per unit (at least 1).
     pub depth: u16,
+    /// How many mip levels the data holds.
     pub levels: u8,
     /// `sga` image dimension (1: 2D, 2: 3D, 3: cube, as stored).
     pub dimension: u8,
+    /// The pixel format.
     pub format: BufferFormat,
+    /// The tile mode as stored.
     pub tile_mode: u8,
+    /// The flag word as stored.
     pub flags: u32,
+    /// The usage word as stored.
     pub usage: u32,
+    /// The pixel data of every level (and slice), as stored.
     pub data: Vec<u8>,
 }
 

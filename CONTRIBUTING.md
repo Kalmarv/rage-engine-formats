@@ -29,4 +29,4 @@ The parsers take bytes. Only the modules that open the install's archives and th
 
 ## Changing the code
 
-Keep readers strict (read to the last byte, refuse what the layout does not account for) and refusals specific (the format, the offset where there is one, what was expected). Use checked reads rather than indexing, document public items, and add a test next to the behaviour you change: a synthetic one where a hand-built file can show it, a real-data one where only the game's files can.
+Keep readers strict (read to the last byte, refuse what the layout does not account for) and refusals specific (the format, the offset where there is one, what was expected). Use checked reads rather than indexing (the library denies `clippy::indexing_slicing`, `arithmetic_side_effects` and `cast_possible_truncation`; `#![warn(missing_docs)]` makes every public item need a doc comment), document public items, and add a test next to the behaviour you change: a synthetic one where a hand-built file can show it, a real-data one where only the game's files can.

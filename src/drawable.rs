@@ -97,8 +97,11 @@ pub const SEMANTICS: [&str; 52] = [
 /// One vertex element: semantic slot, buffer format, byte offset in the vertex.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Element {
+    /// The semantic slot, an index into [`SEMANTICS`].
     pub slot: u8,
+    /// The element's buffer format.
     pub format: BufferFormat,
+    /// The element's byte offset in the vertex.
     pub offset: u32,
 }
 
@@ -119,11 +122,15 @@ pub struct Geometry {
     pub shader: u16,
     /// Bounds, as stored (`min`, `max`, each with a fourth component).
     pub bounds: [[f32; 4]; 2],
+    /// How many vertices there are.
     pub vertex_count: u32,
+    /// Bytes of one vertex.
     pub stride: u16,
     /// Elements in slot order.
     pub elements: Vec<Element>,
+    /// The interleaved vertex bytes, `vertex_count` times `stride`.
     pub vertices: Vec<u8>,
+    /// The triangle-list indices into the vertices.
     pub indices: Vec<u16>,
     /// The geometry's bone palette: the bone ids (skeleton tags) its `BLENDINDICES0` entries index, in the order
     /// stored; empty for a geometry that is not skinned (a ped's or a prop's skinned geometry has one).
@@ -154,8 +161,11 @@ impl Geometry {
 /// A model: geometries drawn with one bone binding and render mask.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Model {
+    /// The bone binding word, as stored.
     pub skeleton_binding: u32,
+    /// The render mask, as stored.
     pub render_mask: u16,
+    /// The model's geometries.
     pub geometries: Vec<Geometry>,
 }
 
@@ -177,35 +187,48 @@ pub enum ParamValue {
 /// 20-31), and its value.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Param {
+    /// The parameter's name hash.
     pub name: u32,
+    /// The packed info word.
     pub info: u32,
+    /// The parameter's value.
     pub value: ParamValue,
 }
 
 /// A shader: effect name, preset, render bucket and parameters in stored order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shader {
+    /// The effect's name hash.
     pub name: u32,
     /// Legacy's preset (`.sps`) name hash; Enhanced stores 0x6d657461 here for every shader of the install, so a shader's
     /// class comes from its effect name and render bucket.
     pub preset: u32,
+    /// The render bucket.
     pub render_bucket: u8,
+    /// The render bucket mask word, as stored.
     pub bucket_mask: u32,
+    /// The parameters in stored order.
     pub params: Vec<Param>,
 }
 
 /// A drawable.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Drawable {
+    /// The bounding sphere's centre.
     pub bounding_centre: [f32; 3],
+    /// The bounding sphere's radius.
     pub bounding_radius: f32,
+    /// The bounding box's minimum corner.
     pub bbox_min: [f32; 3],
+    /// The bounding box's maximum corner.
     pub bbox_max: [f32; 3],
     /// High, medium, low and very low LOD distances.
     pub lod_dist: [f32; 4],
+    /// The four render mask words after the LOD distances, as stored.
     pub render_masks: [u32; 4],
     /// Models per LOD: high, medium, low, very low.
     pub lods: [Vec<Model>; 4],
+    /// The shader group's shaders, which the models' geometries index.
     pub shaders: Vec<Shader>,
     /// The shader group's embedded texture dictionary.
     pub textures: Option<TextureDictionary>,
@@ -224,40 +247,65 @@ pub struct Drawable {
 /// sRGB bytes.
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
 pub struct LightAttr {
+    /// The light's position.
     pub position: [f32; 3],
+    /// The light's colour (sRGB bytes).
     pub colour: [u8; 3],
+    /// The flashiness byte, as stored.
     pub flashiness: u8,
+    /// The light's intensity.
     pub intensity: f32,
+    /// The light's flag word.
     pub flags: u32,
+    /// The tag of the bone the light is attached to.
     pub bone_id: u16,
     /// 1 point, 2 spot, 4 capsule.
     pub kind: u8,
+    /// The light group id.
     pub group_id: u8,
     /// The hours it is on: bit h for hour h (the low 24 bits), higher bits as stored.
     pub time_flags: u32,
+    /// The light's falloff distance.
     pub falloff: f32,
+    /// The light's falloff exponent.
     pub falloff_exponent: f32,
     /// Culling plane normal and offset.
     pub culling_plane: [f32; 4],
+    /// The shadow blur byte.
     pub shadow_blur: u8,
+    /// The volumetric light's intensity.
     pub volume_intensity: f32,
+    /// The volumetric light's size scale.
     pub volume_size_scale: f32,
+    /// The volumetric light's outer colour (sRGB bytes).
     pub volume_outer_colour: [u8; 3],
+    /// The light hash byte, as stored.
     pub light_hash: u8,
+    /// The volumetric light's outer intensity.
     pub volume_outer_intensity: f32,
+    /// The corona's size.
     pub corona_size: f32,
+    /// The volumetric light's outer exponent.
     pub volume_outer_exponent: f32,
     /// Light, shadow, specular and volumetric fade distances.
     pub fade_distances: [u8; 4],
+    /// The shadow's near clip distance.
     pub shadow_near_clip: f32,
+    /// The corona's intensity.
     pub corona_intensity: f32,
+    /// The corona's depth bias.
     pub corona_z_bias: f32,
+    /// The spot or capsule direction.
     pub direction: [f32; 3],
+    /// The light's tangent.
     pub tangent: [f32; 3],
+    /// A spot's inner cone angle.
     pub cone_inner_angle: f32,
+    /// A spot's outer cone angle.
     pub cone_outer_angle: f32,
     /// A capsule's extent.
     pub extent: [f32; 3],
+    /// The name hash of the texture the light projects.
     pub projected_texture_hash: u32,
     /// The words community tools know as always zero (0x00, 0x04, 0x14, 0x48, 0xA4) and the bytes at 0x45..0x48,
     /// kept to see whether they ever are not.
@@ -315,6 +363,7 @@ impl LightAttr {
 /// fragment, the fragment's own bone pose (by bone index, into the model's space).
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
 pub struct Bones {
+    /// The skeleton, when there is one.
     pub skeleton: Option<Skeleton>,
     /// A fragment's bone pose (the list at 0xA8 of its header); empty for a drawable or a dictionary entry.
     pub fragment_pose: Vec<[[f32; 4]; 3]>,
@@ -1066,9 +1115,13 @@ pub const FRAGMENT_VERSION: u32 = 171;
 /// of its physics (groups, children's masses and joints), glass and bones are not read yet.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fragment {
+    /// The fragment's name.
     pub name: String,
+    /// The main drawable, the one the world draws.
     pub drawable: Option<Drawable>,
+    /// The extra drawables, by name.
     pub extra: Vec<(String, Drawable)>,
+    /// The cloth drawable.
     pub cloth: Option<Drawable>,
     /// The bones' pose, by bone index: three rows `[x, y, z, translation]` (`world = row . (p, 1)`).
     pub pose: Vec<[[f32; 4]; 3]>,
@@ -1156,6 +1209,7 @@ impl Fragment {
 pub struct DrawableDictionary {
     /// Name hashes as stored (the joaat of the lowercase name), parallel to `drawables`.
     pub hashes: Vec<u32>,
+    /// The drawables, in the order of `hashes`.
     pub drawables: Vec<Drawable>,
 }
 

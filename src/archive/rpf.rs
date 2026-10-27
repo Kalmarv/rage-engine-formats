@@ -55,19 +55,32 @@ impl Encryption {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EntryKind {
     /// Entries `first .. first + count` are its children.
-    Directory { first: u32, count: u32 },
+    Directory {
+        /// The index of the first child entry.
+        first: u32,
+        /// How many children there are.
+        count: u32,
+    },
     /// `stored` bytes at `block` (0: stored uncompressed, `size` bytes); DEFLATE when `stored` is not 0.
     Binary {
+        /// The 512-byte block the data starts at.
         block: u32,
+        /// Bytes stored; 0 when stored uncompressed.
         stored: u32,
+        /// Bytes once read (the inflated size when `stored` is not 0).
         size: u32,
+        /// Whether the stored bytes are under the archive's cipher.
         encrypted: bool,
     },
     /// `stored` bytes at `block` (header included); the page flags give the inflated size.
     Resource {
+        /// The 512-byte block the data starts at.
         block: u32,
+        /// Bytes stored, the 16 before the body included.
         stored: u32,
+        /// The page layout of the system pages.
         system: PageFlags,
+        /// The page layout of the graphics pages.
         graphics: PageFlags,
     },
 }
@@ -79,6 +92,7 @@ pub struct Entry {
     pub name: String,
     /// Lowercase, from the archive's path down, joined by `\`.
     pub path: String,
+    /// What the entry is.
     pub kind: EntryKind,
 }
 
@@ -95,7 +109,9 @@ pub struct Archive {
     pub name: String,
     /// Lowercase path: relative to the install for a top-level archive, the parent entry's path for a nested one.
     pub path: String,
+    /// The cipher on its table of contents.
     pub encryption: Encryption,
+    /// Its table of contents, the root directory first.
     pub entries: Vec<Entry>,
 }
 

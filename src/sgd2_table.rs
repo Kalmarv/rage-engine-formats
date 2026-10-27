@@ -44,21 +44,26 @@ const HEADER: usize = 8;
 /// One resource record: a constant buffer, texture or sampler.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TableResource {
+    /// The record's first u16, as stored.
     pub tag: u16,
+    /// The register the resource is bound to.
     pub register: u16,
     /// How many constant records follow for this resource, in record order (0 for a texture or a sampler).
     pub constants: u8,
     /// The byte after the count, as stored.
     pub class: u8,
+    /// The register space.
     pub space: u16,
     /// The six bytes after the space, as stored.
     pub unknown_8: [u8; 6],
     /// A constant buffer's stored size in bytes.
     pub size: u32,
+    /// The u16 after the size, as stored.
     pub unknown_18: u16,
     /// The hash of the program's name for it (the joaat of a name in the table), and of the shader's current name (0
     /// when it has none; not a name of the table).
     pub name: u32,
+    /// The hash of the shader's current name for it (0 when it has none).
     pub second_name: u32,
 }
 
@@ -69,10 +74,15 @@ pub struct TableConstant {
     pub flags: u32,
     /// Byte offset in its constant buffer.
     pub offset: u16,
+    /// The u16 after the offset, as stored.
     pub id: u16,
+    /// The u32 after the id, as stored.
     pub x: u32,
+    /// The u32 after that, as stored.
     pub s: u32,
+    /// The hash of the program's name for the constant.
     pub name: u32,
+    /// The hash of the shader's current name for it (0 when it has none).
     pub second_name: u32,
 }
 
@@ -89,6 +99,7 @@ impl TableConstant {
 pub struct ProgramTable {
     /// The u16 after the counts, as stored.
     pub unknown_6: u16,
+    /// The resource records, in order.
     pub resources: Vec<TableResource>,
     /// Every constant record, in the order of the resources that own them.
     pub constants: Vec<TableConstant>,
@@ -279,12 +290,15 @@ impl ProgramTable {
 /// A material parameter the shader names twice: its record in an effect's parameter table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EffectParameter {
+    /// The flag word; its low byte is the value's type, as in [`TableConstant::flags`].
     pub flags: u32,
     /// Byte offset in the constant buffer of the program that reads it.
     pub offset: u16,
+    /// The u16 after the offset, as in [`TableConstant::id`].
     pub id: u16,
     /// The program's name for it (hash) and the shader's current name: the key a drawable's material stores it by.
     pub name: u32,
+    /// The hash of the shader's current name for the parameter.
     pub second_name: u32,
 }
 

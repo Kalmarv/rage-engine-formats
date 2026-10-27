@@ -70,7 +70,9 @@ pub const EFFECT_LISTS: [usize; 6] = [0, 1, 2, 3, 4, 5];
 /// One shader program.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Program<'a> {
+    /// The program's name.
     pub name: &'a str,
+    /// The byte after the name, as stored.
     pub tag: u8,
     /// The Direct3D 12 container, as stored.
     pub container: &'a [u8],
@@ -83,6 +85,7 @@ pub struct Program<'a> {
 /// One effect: the programs it uses.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Effect<'a> {
+    /// The effect's name.
     pub name: &'a str,
     /// The word after the name (not a size).
     pub word: u32,
@@ -98,6 +101,7 @@ pub struct Effect<'a> {
 pub struct Sgd2<'a> {
     /// The eight groups, in [`GROUP_STAGES`] order.
     pub groups: [Vec<Program<'a>>; 8],
+    /// The effects, in file order.
     pub effects: Vec<Effect<'a>>,
 }
 

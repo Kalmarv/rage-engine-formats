@@ -18,9 +18,13 @@ pub struct Element {
     /// The byte offset of the element's start tag in the document it was read from (for [`crate::rbf`]'s elements, of
     /// its first record): where errors about it point.
     pub offset: u64,
+    /// The element's name as written.
     pub name: String,
+    /// Its attributes in document order, entities resolved.
     pub attrs: Vec<(String, String)>,
+    /// Its child elements in document order.
     pub children: Vec<Element>,
+    /// The text directly inside it, concatenated and untrimmed.
     pub text: String,
 }
 

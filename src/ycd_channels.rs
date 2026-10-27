@@ -130,10 +130,20 @@ pub enum Channel {
     /// A float, constant over the sequence.
     StaticFloat(f32),
     /// A float a frame of the sequence's span, decoded from a raw, quantised, indirect or linear channel (`kind`).
-    Frames { kind: ChannelKind, values: Vec<f32> },
+    Frames {
+        /// The type of channel the values were decoded from.
+        kind: ChannelKind,
+        /// One value per frame of the sequence's span.
+        values: Vec<f32>,
+    },
     /// The component (0 to 3: x, y, z, w) of a quaternion the track derives from its first three channels; `kind` is
     /// [`ChannelKind::CachedQuaternion1`] or [`ChannelKind::CachedQuaternion2`].
-    Cached { kind: ChannelKind, component: u8 },
+    Cached {
+        /// The cached channel's type.
+        kind: ChannelKind,
+        /// Which component of the quaternion (0 to 3) the channel supplies.
+        component: u8,
+    },
 }
 
 /// `sqrt(max(1 - x² - y² - z², 0))`: the component a unit quaternion's other three leave.
@@ -166,6 +176,7 @@ impl Channel {
 /// The channels of one bone track of a sequence, by index.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Track {
+    /// The channels, by index.
     pub channels: Vec<Channel>,
 }
 
@@ -263,7 +274,9 @@ impl Track {
 /// holds no channel for it).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
+    /// How many frames the sequence spans.
     pub frames: usize,
+    /// The decoded tracks, by the animation's bone track index.
     pub tracks: Vec<Option<Track>>,
     /// How many root motion references the sequence ends with (not decoded).
     pub root_motion_refs: usize,

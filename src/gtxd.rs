@@ -20,8 +20,11 @@ use crate::{Result, invalid};
 /// A child named twice with different parents.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Conflict {
+    /// The child dictionary named twice.
     pub child: String,
+    /// The parent kept (the first one read).
     pub kept: String,
+    /// The parent the later source names.
     pub other: String,
     /// The source naming `other`.
     pub source: String,
@@ -30,11 +33,13 @@ pub struct Conflict {
 /// The parent of each texture dictionary that has one, by the joaat of the lowercase names.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TextureParents {
+    /// Child hash to parent hash.
     pub parents: BTreeMap<u32, u32>,
     /// Names by hash, for the dictionaries named in the pairs.
     pub names: BTreeMap<u32, String>,
     /// The files read, in order.
     pub sources: Vec<String>,
+    /// Every child named twice with different parents.
     pub conflicts: Vec<Conflict>,
 }
 

@@ -55,17 +55,22 @@ impl ProgramStage {
 /// A preset parameter: a named value the effect starts with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PresetParam {
+    /// The parameter's name.
     pub name: String,
+    /// The byte between the name and the value, as stored.
     pub unused: u8,
+    /// The value as stored.
     pub value: u32,
 }
 
 /// One shader program.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shader {
+    /// The program's name.
     pub name: String,
     /// A second name, where the first is empty (the file then carries both).
     pub second_name: Option<String>,
+    /// The names of the variables it reads.
     pub variables: Vec<String>,
     /// The constant buffers it reads: name and register.
     pub buffers: Vec<(String, u16)>,
@@ -82,17 +87,24 @@ pub struct Shader {
 pub struct Group {
     /// The count byte was zero and another byte followed it.
     pub extra_count_byte: bool,
+    /// The group's name.
     pub name: String,
+    /// Two bytes after the name, as stored.
     pub unknown_bytes: [u8; 2],
+    /// The word after them, as stored.
     pub unknown_word: u32,
+    /// The group's programs.
     pub shaders: Vec<Shader>,
 }
 
 /// A constant buffer of the effect: its size, the register it has in each stage (one per [`ProgramStage`]) and name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstantBuffer {
+    /// The buffer's size in bytes.
     pub size: u32,
+    /// The register it has in each stage, in [`ProgramStage::ALL`] order.
     pub registers: [u16; 6],
+    /// The buffer's name.
     pub name: String,
 }
 
@@ -110,24 +122,36 @@ pub enum ParamValue {
 #[derive(Clone, Debug, PartialEq)]
 /// A named parameter of a variable, as stored.
 pub struct VariableParam {
+    /// The parameter's name.
     pub name: String,
+    /// The parameter's value.
     pub value: ParamValue,
 }
 
 /// A variable of the effect: a constant, a texture, a buffer.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Variable {
+    /// The variable's kind byte, as stored.
     pub kind: u8,
+    /// The array count byte, as stored.
     pub count: u8,
+    /// The slot byte, as stored.
     pub slot: u8,
+    /// The group byte, as stored.
     pub group: u8,
+    /// The variable's name.
     pub name: String,
+    /// A second name, as stored.
     pub name2: String,
+    /// The offset byte, as stored.
     pub offset: u8,
+    /// The variant byte, as stored.
     pub variant: u8,
+    /// Two bytes the file carries after the variant, as stored.
     pub unused: [u8; 2],
     /// The hash of the constant buffer's name.
     pub constant_buffer: u32,
+    /// The variable's named parameters.
     pub params: Vec<VariableParam>,
     /// The default value's words as stored (integers and handles are integers, the rest floats: `kind` says).
     pub values: Vec<u32>,
@@ -136,26 +160,35 @@ pub struct Variable {
 /// One pass of a technique: the program of each stage (1-based into that stage's group, 0 none) and its parameters.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pass {
+    /// The program of each stage, in [`ProgramStage::ALL`] order.
     pub programs: [u8; 6],
+    /// The pass's parameters as `(kind, value)` word pairs, as stored.
     pub params: Vec<(u32, u32)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A named technique: the passes it draws with.
 pub struct Technique {
+    /// The technique's name.
     pub name: String,
+    /// The passes, in order.
     pub passes: Vec<Pass>,
 }
 
 /// A compiled effect.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fxc {
+    /// The effect's vertex type word.
     pub vertex_type: u32,
+    /// The effect's preset parameters.
     pub presets: Vec<PresetParam>,
     /// The six stages' groups, in [`ProgramStage::ALL`] order.
     pub groups: [Group; 6],
+    /// The constant buffers, as the file's two lists hold them.
     pub constant_buffers: [Vec<ConstantBuffer>; 2],
+    /// The variables, as the file's two lists hold them (each list is read after its buffers).
     pub variables: [Vec<Variable>; 2],
+    /// The techniques.
     pub techniques: Vec<Technique>,
 }
 

@@ -130,8 +130,11 @@ impl Kind {
 /// A field description.
 #[derive(Clone, Debug)]
 pub struct Field {
+    /// The field's name hash.
     pub name: u32,
+    /// The field's byte offset in its structure.
     pub offset: u32,
+    /// The field's type.
     pub kind: Kind,
     /// The description's byte 9, kept as stored (its meaning is not known).
     pub byte9: u8,
@@ -144,24 +147,33 @@ pub struct Field {
 /// A structure description.
 #[derive(Clone, Debug)]
 pub struct StructInfo {
+    /// The structure's name hash.
     pub name: u32,
+    /// The description's key word, as stored.
     pub key: u32,
+    /// The structure's size in bytes.
     pub size: u32,
+    /// The fields, in description order.
     pub fields: Vec<Field>,
 }
 
 /// An enum description: value names and values.
 #[derive(Clone, Debug)]
 pub struct EnumInfo {
+    /// The enum's name hash.
     pub name: u32,
+    /// The description's key word, as stored.
     pub key: u32,
+    /// The enum's `(name hash, value)` pairs.
     pub values: Vec<(u32, i32)>,
 }
 
 /// A data block: an array of one structure or primitive type.
 #[derive(Clone, Debug)]
 pub struct Block {
+    /// What the block holds: the name hash of its structure, or the code of its primitive or pointer type.
     pub name: u32,
+    /// The block's bytes.
     pub data: Vec<u8>,
 }
 
@@ -172,8 +184,11 @@ pub struct Meta {
     pub name: Option<String>,
     /// The index of the root block.
     pub root: usize,
+    /// The structure descriptions, by name hash.
     pub structs: BTreeMap<u32, StructInfo>,
+    /// The enum descriptions, by name hash.
     pub enums: BTreeMap<u32, EnumInfo>,
+    /// The data blocks, in file order.
     pub blocks: Vec<Block>,
 }
 
@@ -203,7 +218,12 @@ pub enum Value {
     /// A 32-bit name hash.
     Hash(u32),
     /// An enum or flags value with the enum's name.
-    Enum { enum_name: u32, value: i32 },
+    Enum {
+        /// The enum's name hash.
+        enum_name: u32,
+        /// The value as stored.
+        value: i32,
+    },
     /// A fixed-size character array up to its first NUL.
     Chars(Vec<u8>),
     /// A whole data block's bytes.
@@ -221,7 +241,9 @@ pub enum Value {
 /// A decoded structure: its name and its fields in description order (array-info fields left out).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Struct {
+    /// The structure's name hash.
     pub name: u32,
+    /// The fields as `(name hash, value)`, in description order.
     pub fields: Vec<(u32, Value)>,
 }
 

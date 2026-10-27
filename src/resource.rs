@@ -78,7 +78,9 @@ impl PageFlags {
 pub struct Resource {
     /// The resource type's version: the flags' high bits, system then graphics.
     pub version: u32,
+    /// The page layout of the system pages.
     pub system: PageFlags,
+    /// The page layout of the graphics pages.
     pub graphics: PageFlags,
     /// System pages then graphics pages, exactly `system.size() + graphics.size()` bytes.
     pub data: Vec<u8>,

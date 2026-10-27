@@ -37,26 +37,39 @@ pub enum EntityKind {
 /// A placed entity (`CEntityDef`, or the entity part of a `CMloInstanceDef`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct EntityDef {
+    /// Whether it is an entity or an interior instance.
     pub kind: EntityKind,
+    /// The archetype's name hash.
     pub archetype: u32,
+    /// The entity's flag word.
     pub flags: u32,
+    /// The entity's guid.
     pub guid: u32,
+    /// The entity's position.
     pub position: [f32; 3],
     /// A quaternion `x, y, z, w` as stored (the game uses its conjugate for the entity's orientation).
     pub rotation: [f32; 4],
+    /// The horizontal scale.
     pub scale_xy: f32,
+    /// The vertical scale.
     pub scale_z: f32,
     /// The index of the LOD parent in the parent map's entities, -1 for none.
     pub parent_index: i32,
+    /// The distance the entity is drawn to.
     pub lod_dist: f32,
+    /// The distance its LOD children are drawn to.
     pub child_lod_dist: f32,
     /// `rage__eLodType`: 0 HD, 1 LOD, 2 SLOD1, 3 SLOD2, 4 SLOD3, 5 ORPHANHD, 6 SLOD4.
     pub lod_level: i32,
+    /// How many LOD children it has.
     pub num_children: u32,
     /// `rage__ePriorityLevel`: 0 required, 1 optional high, 2 optional medium, 3 optional low.
     pub priority_level: i32,
+    /// The ambient occlusion multiplier.
     pub ambient_occlusion_multiplier: i32,
+    /// The artificial ambient occlusion.
     pub artificial_ambient_occlusion: i32,
+    /// The tint value.
     pub tint_value: u32,
     /// The number of extensions (lights, particle effects, ladders, ...), kept in the META tree.
     pub extensions: usize,
@@ -95,14 +108,21 @@ impl EntityDef {
 /// A map (`CMapData`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MapData {
+    /// The map's name hash.
     pub name: u32,
     /// The LOD parent map's name, 0 for none.
     pub parent: u32,
+    /// The map's flag word.
     pub flags: u32,
+    /// The content flags, see [`MapContent`].
     pub content_flags: u32,
+    /// The streaming extents: minimum and maximum corners.
     pub streaming_extents: [[f32; 3]; 2],
+    /// The extents of the entities: minimum and maximum corners.
     pub entities_extents: [[f32; 3]; 2],
+    /// The placed entities.
     pub entities: Vec<EntityDef>,
+    /// The name hashes of the physics dictionaries.
     pub physics_dictionaries: Vec<u32>,
 }
 
@@ -131,12 +151,17 @@ impl MapData {
 /// Read from [`crate::meta::Meta::root_scalars`] (or a whole root).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MapHeader {
+    /// The map's name hash.
     pub name: u32,
     /// The LOD parent map's name, 0 for none.
     pub parent: u32,
+    /// The map's flag word.
     pub flags: u32,
+    /// The content flags, see [`MapContent`].
     pub content_flags: u32,
+    /// The streaming extents: minimum and maximum corners.
     pub streaming_extents: [[f32; 3]; 2],
+    /// The extents of the entities: minimum and maximum corners.
     pub entities_extents: [[f32; 3]; 2],
 }
 
@@ -227,22 +252,37 @@ pub enum ArchetypeKind {
 /// An archetype (`CBaseArchetypeDef` and the base part of the time and interior kinds).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArchetypeDef {
+    /// Which kind of archetype it is.
     pub kind: ArchetypeKind,
+    /// The archetype's name hash.
     pub name: u32,
+    /// The distance it is drawn to.
     pub lod_dist: f32,
+    /// The archetype's flag word.
     pub flags: u32,
+    /// The special attribute word, as stored.
     pub special_attribute: u32,
+    /// The bounding box's minimum corner.
     pub bb_min: [f32; 3],
+    /// The bounding box's maximum corner.
     pub bb_max: [f32; 3],
+    /// The bounding sphere's centre.
     pub bs_centre: [f32; 3],
+    /// The bounding sphere's radius.
     pub bs_radius: f32,
+    /// The distance the high-detail textures are used to.
     pub hd_texture_dist: f32,
+    /// The texture dictionary's name hash.
     pub texture_dictionary: u32,
+    /// The clip dictionary's name hash.
     pub clip_dictionary: u32,
+    /// The drawable dictionary's name hash.
     pub drawable_dictionary: u32,
+    /// The physics dictionary's name hash.
     pub physics_dictionary: u32,
     /// `rage__fwArchetypeDef__eAssetType`: 0 uninitialized, 1 fragment, 2 drawable, 3 drawable dictionary, 4 asset-less.
     pub asset_type: i32,
+    /// The name hash of the asset the archetype draws.
     pub asset_name: u32,
     /// The hours shown, for the time kind.
     pub time_flags: Option<u32>,
@@ -256,8 +296,11 @@ pub struct ArchetypeDef {
 /// An interior archetype's own entities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Interior {
+    /// The interior's flag word.
     pub mlo_flags: u32,
+    /// The entities placed in it.
     pub entities: Vec<EntityDef>,
+    /// How many entity sets it has.
     pub entity_sets: usize,
 }
 
@@ -310,8 +353,11 @@ impl ArchetypeDef {
 /// Map types (`CMapTypes`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MapTypes {
+    /// The types file's name hash.
     pub name: u32,
+    /// The archetypes it defines.
     pub archetypes: Vec<ArchetypeDef>,
+    /// The name hashes of the files it depends on.
     pub dependencies: Vec<u32>,
 }
 
