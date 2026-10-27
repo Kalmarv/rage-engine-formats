@@ -388,7 +388,10 @@ impl Meta {
             let len =
                 usize::try_from(View::new(d).u32(4, LE)?).map_err(|_| err(block_ptr, "block length"))?;
             let data = if len > 0 {
-                r.at(View::new(d).u64(8, LE)?, len)?.to_vec()
+                let at = View::new(d).u64(8, LE)?;
+                // blocks may share their bytes: each copy is charged
+                r.charge(len, at)?;
+                r.at(at, len)?.to_vec()
             } else {
                 Vec::new()
             };
@@ -1190,6 +1193,26 @@ mod tests {
             zero_filled: 0,
             spent: Default::default(),
         }
+    }
+
+    /// Blocks may point at the same bytes, so the copies made of them would multiply by the number of blocks: 100
+    /// blocks of 2 KiB all over one region of an 8 KiB resource copy more than its allowance of four times its size.
+    #[test]
+    fn blocks_sharing_their_bytes_are_charged_for_each_copy() {
+        let mut r = sample(3, b"hello\0");
+        let table = 0x1000;
+        let (head, _) = r.data.split_at_mut(0x2000);
+        let old: Vec<u8> = head[0x400..0x440].to_vec();
+        put(head, table, &old);
+        for i in 4..100 {
+            put(head, table + 16 * i, &BLOCK_STRING.to_le_bytes());
+            put(head, table + 16 * i + 4, &0x800u32.to_le_bytes());
+            put(head, table + 16 * i + 8, &0x5000_0800u64.to_le_bytes());
+        }
+        put(head, 0x30, &(0x5000_0000u64 + table as u64).to_le_bytes());
+        put(head, 0x4C, &100u16.to_le_bytes());
+        let e = Meta::read(&r).unwrap_err().to_string();
+        assert!(e.contains("copy more than 4 times the resource"), "{e}");
     }
 
     #[test]

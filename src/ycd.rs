@@ -171,6 +171,8 @@ fn name_at(r: &Resource, pointer: u64, len: usize, capacity: usize) -> Result<St
             format!("a name of {len} characters with capacity {capacity}"),
         ));
     }
+    // names may be shared by clips: each copy is charged
+    r.charge(capacity, pointer)?;
     let bytes = r.at(pointer, capacity)?;
     let (text, nul) = bytes.split_at(len);
     if nul != [0] {
@@ -275,6 +277,75 @@ fn animation(r: &Resource, pointer: u64) -> Result<Animation> {
     })
 }
 
+/// The clip at `pointer`, listed under `hash`; `animations` maps the dictionary's animations' pointers to their hashes.
+/// Clips may share their records, names and play lists, so what is copied out of them is charged each time.
+fn clip(r: &Resource, hash: u32, pointer: u64, by_pointer: &BTreeMap<u64, u32>) -> Result<Clip> {
+    r.charge(0x70, pointer)?;
+    let c = r.at(pointer, 112)?;
+    let name = name_at(
+        r,
+        View::new(c).u64(0x18, LE)?,
+        usize::from(View::new(c).u16(0x20, LE)?),
+        usize::from(View::new(c).u16(0x22, LE)?),
+    )?;
+    let play = |start: usize, animation: u64| -> Result<ClipPlay> {
+        Ok(ClipPlay {
+            animation: *by_pointer.get(&animation).ok_or_else(|| {
+                err(
+                    pointer,
+                    format!("clip {name} plays an animation that is not the dictionary's"),
+                )
+            })?,
+            start: View::new(c).f32(start, LE)?,
+            end: View::new(c).f32(start.saturating_add(4), LE)?,
+            rate: View::new(c).f32(start.saturating_add(8), LE)?,
+        })
+    };
+    let (plays, list_duration) = match View::new(c).u32(0x10, LE)? {
+        1 => (vec![play(0x54, View::new(c).u64(0x50, LE)?)?], None),
+        2 => {
+            let count = usize::from(View::new(c).u16(0x58, LE)?);
+            if View::new(c).u16(0x5A, LE)? != View::new(c).u16(0x58, LE)? {
+                return Err(err(
+                    pointer,
+                    format!("clip {name}: two different counts of its animations"),
+                ));
+            }
+            r.charge(count.saturating_mul(24), pointer)?;
+            let list = r.records(View::new(c).u64(0x50, LE)?, count, 24)?;
+            let plays = list
+                .as_chunks::<24>()
+                .0
+                .iter()
+                .map(|e| {
+                    let animation = View::new(e).u64(0x10, LE)?;
+                    Ok(ClipPlay {
+                        animation: *by_pointer.get(&animation).ok_or_else(|| {
+                            err(
+                                pointer,
+                                format!("clip {name} plays an animation that is not the dictionary's"),
+                            )
+                        })?,
+                        start: View::new(e).f32(0, LE)?,
+                        end: View::new(e).f32(4, LE)?,
+                        rate: View::new(e).f32(8, LE)?,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+            (plays, Some(View::new(c).f32(0x60, LE)?))
+        }
+        t => return Err(err(pointer, format!("clip {name} of type {t}"))),
+    };
+    Ok(Clip {
+        hash,
+        name,
+        plays,
+        list_duration,
+        has_tags: View::new(c).u64(0x38, LE)? != 0,
+        has_properties: View::new(c).u64(0x40, LE)? != 0,
+    })
+}
+
 impl ClipDictionary {
     /// A ycd's dictionary, after checking the resource is in Enhanced's layout.
     pub fn read_resource(r: &Resource) -> Result<ClipDictionary> {
@@ -312,70 +383,7 @@ impl ClipDictionary {
         );
         let mut clips = Vec::new();
         for (hash, pointer) in chains(r, clips_table, clips_capacity, clips_entries)? {
-            let c = r.at(pointer, 112)?;
-            let name = name_at(
-                r,
-                View::new(c).u64(0x18, LE)?,
-                usize::from(View::new(c).u16(0x20, LE)?),
-                usize::from(View::new(c).u16(0x22, LE)?),
-            )?;
-            let play = |start: usize, animation: u64| -> Result<ClipPlay> {
-                Ok(ClipPlay {
-                    animation: *by_pointer.get(&animation).ok_or_else(|| {
-                        err(
-                            pointer,
-                            format!("clip {name} plays an animation that is not the dictionary's"),
-                        )
-                    })?,
-                    start: View::new(c).f32(start, LE)?,
-                    end: View::new(c).f32(start.saturating_add(4), LE)?,
-                    rate: View::new(c).f32(start.saturating_add(8), LE)?,
-                })
-            };
-            let (plays, list_duration) = match View::new(c).u32(0x10, LE)? {
-                1 => (vec![play(0x54, View::new(c).u64(0x50, LE)?)?], None),
-                2 => {
-                    let count = usize::from(View::new(c).u16(0x58, LE)?);
-                    if View::new(c).u16(0x5A, LE)? != View::new(c).u16(0x58, LE)? {
-                        return Err(err(
-                            pointer,
-                            format!("clip {name}: two different counts of its animations"),
-                        ));
-                    }
-                    let list = r.records(View::new(c).u64(0x50, LE)?, count, 24)?;
-                    let plays = list
-                        .as_chunks::<24>()
-                        .0
-                        .iter()
-                        .map(|e| {
-                            let animation = View::new(e).u64(0x10, LE)?;
-                            Ok(ClipPlay {
-                                animation: *by_pointer.get(&animation).ok_or_else(|| {
-                                    err(
-                                        pointer,
-                                        format!(
-                                            "clip {name} plays an animation that is not the dictionary's"
-                                        ),
-                                    )
-                                })?,
-                                start: View::new(e).f32(0, LE)?,
-                                end: View::new(e).f32(4, LE)?,
-                                rate: View::new(e).f32(8, LE)?,
-                            })
-                        })
-                        .collect::<Result<Vec<_>>>()?;
-                    (plays, Some(View::new(c).f32(0x60, LE)?))
-                }
-                t => return Err(err(pointer, format!("clip {name} of type {t}"))),
-            };
-            clips.push(Clip {
-                hash,
-                name,
-                plays,
-                list_duration,
-                has_tags: View::new(c).u64(0x38, LE)? != 0,
-                has_properties: View::new(c).u64(0x40, LE)? != 0,
-            });
+            clips.push(clip(r, hash, pointer, &by_pointer)?);
         }
         Ok(ClipDictionary { animations, clips })
     }
@@ -431,5 +439,24 @@ mod tests {
         let refused = (0..200).position(|_| sequence(&r, ROOT + 0x100).is_err());
         let n = refused.expect("refused once the copies pass the allowance");
         assert!((50..70).contains(&n), "{n} copies of 544 bytes in 4 x 8 KiB");
+    }
+
+    /// Clips listed again and again over one record copy its name every time: the copies stop at a few times the
+    /// resource, as the sequences' do.
+    #[test]
+    fn a_clip_named_over_and_over_is_copied_only_a_few_times_the_resources_size() {
+        let mut record = [0u8; 0x70];
+        record[0x10..0x14].copy_from_slice(&1u32.to_le_bytes());
+        record[0x18..0x20].copy_from_slice(&(ROOT + 0x400).to_le_bytes());
+        record[0x20..0x22].copy_from_slice(&0x400u16.to_le_bytes());
+        record[0x22..0x24].copy_from_slice(&0x401u16.to_le_bytes());
+        record[0x50..0x58].copy_from_slice(&(ROOT + 0x200).to_le_bytes());
+        let name = [b'a'; 0x400];
+        let r = pages(&[(0x100, &record), (0x400, &name)]);
+        let animations = BTreeMap::from([(ROOT + 0x200, 7)]);
+        assert_eq!(clip(&r, 1, ROOT + 0x100, &animations).unwrap().name.len(), 0x400);
+        let refused = (0..200).position(|_| clip(&r, 1, ROOT + 0x100, &animations).is_err());
+        let n = refused.expect("refused once the copies pass the allowance");
+        assert!((20..40).contains(&n), "{n} copies of 1 KiB names in 4 x 8 KiB");
     }
 }

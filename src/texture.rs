@@ -64,6 +64,8 @@ pub(crate) fn c_string(r: &Resource, pointer: u64) -> Result<String> {
             .checked_add(1)
             .ok_or_else(|| err(pointer, "a name past the address space"))?;
     }
+    // names may share their bytes: each copy is charged
+    r.charge(s.len(), pointer)?;
     String::from_utf8(s).map_err(|e| err(pointer, e))
 }
 
@@ -144,6 +146,8 @@ impl Texture {
                 ),
             ));
         }
+        // textures may share their pixels: each copy is charged
+        r.charge(size, pointer)?;
         t.data = r.at(data_ptr, size)?.to_vec();
         Ok(t)
     }
@@ -284,5 +288,56 @@ mod tests {
                 "{e}"
             );
         }
+    }
+
+    /// Textures may point at the same pixel data, so the copies made of it would multiply by their number: nine
+    /// textures of 64 KiB each, all over one 64 KiB region of a 128 KiB resource, copy more than the resource's
+    /// allowance of four times its size.
+    #[test]
+    fn textures_sharing_their_pixels_are_charged_for_each_copy() {
+        let names: Vec<String> = (0..9).map(|i| format!("t{i}")).collect();
+        let mut by_hash: Vec<(u32, usize)> = names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (primase_foundations::hash::joaat(n.as_bytes()), i))
+            .collect();
+        by_hash.sort();
+        let mut data = vec![0u8; 0x20000];
+        let mut put = |at: usize, b: &[u8]| data[at..at + b.len()].copy_from_slice(b);
+        put(0x20, &0x5000_0400u64.to_le_bytes());
+        put(0x28, &9u16.to_le_bytes());
+        put(0x2A, &9u16.to_le_bytes());
+        put(0x30, &0x5000_0500u64.to_le_bytes());
+        put(0x38, &9u16.to_le_bytes());
+        put(0x3A, &9u16.to_le_bytes());
+        for (slot, &(hash, i)) in by_hash.iter().enumerate() {
+            put(0x400 + 4 * slot, &hash.to_le_bytes());
+            put(
+                0x500 + 8 * slot,
+                &(0x5000_1000u64 + 0x80 * i as u64).to_le_bytes(),
+            );
+            let base = 0x1000 + 0x80 * i;
+            put(base + 0x08, &1u32.to_le_bytes());
+            put(base + 0x0C, &0x10000u32.to_le_bytes());
+            put(base + 0x18, &128u16.to_le_bytes());
+            put(base + 0x1A, &128u16.to_le_bytes());
+            put(base + 0x1C, &1u16.to_le_bytes());
+            put(base + 0x1E, &[1, 0x1C]);
+            put(base + 0x22, &[1]);
+            put(base + 0x28, &(0x5000_0A00u64 + 8 * i as u64).to_le_bytes());
+            put(base + 0x38, &0x5001_0000u64.to_le_bytes());
+            put(0xA00 + 8 * i, format!("t{i}\0").as_bytes());
+        }
+        let r = Resource {
+            version: VERSION,
+            system: PageFlags(1 << 4),
+            graphics: PageFlags(0),
+            data,
+            zero_filled: 0,
+            spent: Default::default(),
+        };
+        assert_eq!(r.data.len() as u64, r.system.size());
+        let e = TextureDictionary::read_resource(&r).unwrap_err().to_string();
+        assert!(e.contains("copy more than 4 times the resource"), "{e}");
     }
 }
