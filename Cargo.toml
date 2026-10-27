@@ -25,3 +25,50 @@ sha2.workspace = true
 
 [lints]
 workspace = true
+
+[workspace]
+
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Kalmarv/rage-engine-formats"
+publish = false
+
+[workspace.dependencies]
+aes = { version = "=0.9.3", default-features = false }
+indexmap = { version = "=2.14.2", default-features = false, features = ["std"] }
+primase-foundations = { git = "https://github.com/Kalmarv/primase-foundations", rev = "05dc616e7bd14cad63c4e5218be6e8b79cee60ce" }
+primase-testdata = { git = "https://github.com/Kalmarv/primase-testdata", rev = "71a28a5b188b259e1d49681823aa00996260f544" }
+quick-xml = { version = "=0.42.0", default-features = false }
+serde = { version = "1", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std", "preserve_order", "float_roundtrip"] }
+sha1 = { version = "=0.11.0", default-features = false }
+sha2 = { version = "=0.11.1", default-features = false }
+thiserror = { version = "=2.0.21", default-features = false, features = ["std"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+float_cmp = "allow"
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
+iter_over_hash_type = "deny"
+disallowed_methods = "allow"
+disallowed_types = "allow"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.test]
+opt-level = 1
