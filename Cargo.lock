@@ -512,7 +512,7 @@ dependencies = [
 
 [[package]]
 name = "rage-engine-formats"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes",
  "indexmap",
