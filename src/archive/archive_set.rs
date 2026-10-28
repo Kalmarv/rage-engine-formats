@@ -30,6 +30,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use indexmap::IndexMap;
 
@@ -57,6 +58,40 @@ pub struct Install {
     pub archives: Vec<Archive>,
     by_path: BTreeMap<String, usize>,
     files: BTreeMap<String, FileRef>,
+    /// The archive files opened for reading and not in use, by path, shared by every clone of the install and every
+    /// thread reading it: a read takes one (opening a file only when none is spare) and puts it back, so it does not
+    /// open and close a file of its own.
+    handles: Arc<Mutex<BTreeMap<PathBuf, Vec<File>>>>,
+}
+
+/// How many open files of one archive file the install keeps for its readers to take (a reader has one to itself while
+/// it reads, so threads reading the same archive file do not wait for each other).
+const POOLED_HANDLES: usize = 16;
+
+/// An open archive file taken from the install's pool for a read, and put back when the read is done.
+struct Lease<'a> {
+    pool: &'a Mutex<BTreeMap<PathBuf, Vec<File>>>,
+    path: &'a Path,
+    file: Option<File>,
+}
+impl Lease<'_> {
+    fn file(&mut self) -> Result<&mut File> {
+        self.file
+            .as_mut()
+            .ok_or_else(|| invalid("install", 0, "an archive file was already given back"))
+    }
+}
+impl Drop for Lease<'_> {
+    fn drop(&mut self) {
+        if let Some(file) = self.file.take()
+            && let Ok(mut pool) = self.pool.lock()
+        {
+            let spare = pool.entry(self.path.to_path_buf()).or_default();
+            if spare.len() < POOLED_HANDLES {
+                spare.push(file);
+            }
+        }
+    }
 }
 
 fn rpf_files(dir: &Path, root: &Path, out: &mut Vec<(PathBuf, String)>) -> Result<()> {
@@ -131,6 +166,7 @@ impl Install {
             archives,
             by_path,
             files: index,
+            handles: Arc::default(),
         })
     }
 
@@ -149,6 +185,31 @@ impl Install {
     pub fn read(&self, path: &str, keys: &Keys) -> Result<Option<Vec<u8>>> {
         let Some(r) = self.file(path) else { return Ok(None) };
         self.binary(r, keys).map(Some)
+    }
+
+    /// An open file of `a`'s archive file, for one read: a spare one, or a new one when no thread has one spare.
+    fn lease<'a>(&'a self, a: &'a Archive) -> Result<Lease<'a>> {
+        let spare = self
+            .handles
+            .lock()
+            .map_err(|_| {
+                invalid(
+                    "install",
+                    0,
+                    "an archive file was being taken when a thread panicked",
+                )
+            })?
+            .get_mut(&a.file)
+            .and_then(Vec::pop);
+        let file = match spare {
+            Some(file) => file,
+            None => File::open(&a.file)?,
+        };
+        Ok(Lease {
+            pool: &self.handles,
+            path: &a.file,
+            file: Some(file),
+        })
     }
 
     /// The archive a file reference names; an error for a reference to an archive this install does not hold (one
@@ -171,21 +232,24 @@ impl Install {
     /// not a binary file.
     pub fn binary(&self, f: FileRef, keys: &Keys) -> Result<Vec<u8>> {
         let a = self.archive_of(f)?;
-        a.binary(&mut File::open(&a.file)?, f.entry, keys)
+        let mut lease = self.lease(a)?;
+        a.binary(lease.file()?, f.entry, keys)
     }
 
     /// A binary file as its archive stores it, decrypted: a compressed file's raw deflate stream with the size it
     /// inflates to, or an uncompressed file's contents with `None` ([`Archive::stored`](crate::archive::rpf::Archive::stored)).
     pub fn stored(&self, f: FileRef, keys: &Keys) -> Result<(Vec<u8>, Option<usize>)> {
         let a = self.archive_of(f)?;
-        a.stored(&mut File::open(&a.file)?, f.entry, keys)
+        let mut lease = self.lease(a)?;
+        a.stored(lease.file()?, f.entry, keys)
     }
 
     /// A resource file (RSC7), decoded. An error for an entry that is not a resource, or one whose pages do not inflate
     /// to the sizes its flags give.
     pub fn resource(&self, f: FileRef, keys: &Keys) -> Result<crate::resource::Resource> {
         let a = self.archive_of(f)?;
-        a.resource(&mut File::open(&a.file)?, f.entry, keys)
+        let mut lease = self.lease(a)?;
+        a.resource(lease.file()?, f.entry, keys)
     }
 }
 
@@ -733,6 +797,7 @@ impl ArchiveSet {
                 archives: vec![archive],
                 by_path: BTreeMap::new(),
                 files: BTreeMap::new(),
+                handles: Arc::default(),
             },
             packs: Vec::new(),
             map_archives: IndexMap::new(),
