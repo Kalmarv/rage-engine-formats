@@ -474,7 +474,7 @@ impl Meta {
             .fold(0usize, usize::saturating_add);
         let mut walk = Walk {
             seen: self.blocks.iter().map(|b| vec![false; b.data.len()]).collect(),
-            reached: BTreeSet::new(),
+            reached: Reached::of(self.blocks.iter().map(|b| b.data.len())),
             budget: MAX_DEPTH
                 .saturating_add(1)
                 .saturating_mul(bytes.saturating_add(1)),
@@ -922,7 +922,7 @@ enum Keep {
 /// What a decoding reached: per block, which bytes; and where the structures that pointers and arrays lead to start.
 struct Walk {
     seen: Vec<Vec<bool>>,
-    reached: BTreeSet<(usize, usize)>,
+    reached: Reached,
     /// Structures left to decode. An embedded structure lies within its parent's bytes and pointers and arrays reach
     /// a structure once, so a tree of non-empty structures decodes at most `MAX_DEPTH + 1` per byte of its blocks;
     /// embedded fields that overlap could otherwise decode one exponentially often.
@@ -933,6 +933,40 @@ struct Walk {
 
 /// How deep structures may nest (embedded, pointed at or array elements).
 const MAX_DEPTH: usize = 64;
+
+/// The structures reached so far, by (block id, offset): one bit per byte of each block, and a set for the (id, offset)
+/// pairs outside any block, which a pointer may name and the decoding then refuses.
+struct Reached {
+    bits: Vec<Vec<u64>>,
+    outside: BTreeSet<(usize, usize)>,
+}
+
+impl Reached {
+    /// Nothing reached, for blocks of these lengths (block ids count from 1).
+    fn of(lengths: impl Iterator<Item = usize>) -> Self {
+        Self {
+            bits: lengths.map(|n| vec![0; n.div_ceil(64)]).collect(),
+            outside: BTreeSet::new(),
+        }
+    }
+
+    /// Records the structure at `offset` of block `id`; false if it was already recorded.
+    fn insert(&mut self, id: usize, offset: usize) -> bool {
+        let word = id
+            .checked_sub(1)
+            .and_then(|index| self.bits.get_mut(index))
+            .and_then(|block| block.get_mut(offset >> 6));
+        match word {
+            Some(word) => {
+                let bit = 1u64.wrapping_shl(u32::try_from(offset & 63).unwrap_or_default());
+                let fresh = *word & bit == 0;
+                *word |= bit;
+                fresh
+            }
+            None => self.outside.insert((id, offset)),
+        }
+    }
+}
 
 impl Walk {
     /// Marks `len` bytes at `offset` of block `index` as reached.
@@ -955,7 +989,7 @@ impl Walk {
     /// containers are trees, and one reached twice would be decoded again for every path to it (exponentially many
     /// with nesting).
     fn reach(&mut self, id: usize, offset: usize) -> Result<()> {
-        if !self.reached.insert((id, offset)) {
+        if !self.reached.insert(id, offset) {
             return Err(err(
                 offset as u64,
                 format!("the structure at offset {offset} of block {id} is reached twice"),

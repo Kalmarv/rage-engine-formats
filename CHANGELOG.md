@@ -6,6 +6,8 @@
   one only when none is spare) instead of opening and closing the archive file for every read: threads reading one
   archive file each have a file to themselves. On a GTA V Enhanced install reading resources opened a file every time
   (about 65 us an open and close here, and 32 % of the CPU of a region read).
+- `Meta::root`, `root_scalars` and the other walks note the structures they reach in a bit per byte of each block, not
+  in a `BTreeSet`; the same errors, the same trees.
 - `examples/read_bench.rs`: a timed read of an install's files on N threads with a digest of everything read, for
   comparing changes to the archive read path.
 
