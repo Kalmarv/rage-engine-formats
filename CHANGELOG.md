@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-29)
 
 - **Breaking:** depends on primase-foundations 0.3.0; `le::LE` is its `bytes::Endian`, so that type changes with it.
 - `Install::binary`, `stored` and `resource` take an open file of the archive from a pool the install keeps (and open
