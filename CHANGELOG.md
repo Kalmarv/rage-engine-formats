@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.1.1 (2026-10-28)
+## Unreleased
 
+- **Breaking:** depends on primase-foundations 0.3.0; `le::LE` is its `bytes::Endian`, so that type changes with it.
 - `Install::binary`, `stored` and `resource` take an open file of the archive from a pool the install keeps (and open
   one only when none is spare) instead of opening and closing the archive file for every read: threads reading one
   archive file each have a file to themselves. On a GTA V Enhanced install reading resources opened a file every time
