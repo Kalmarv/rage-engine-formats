@@ -84,9 +84,18 @@ require = 'gate'                        # inputs marked `gate` fail instead of s
 
 The layout of the file is that of [primase-testdata](https://github.com/Kalmarv/primase-testdata) (see its `game-data.example.toml`). [tests/inputs/README.md](tests/inputs/README.md) lists every key, oracle file and debug key (`GAME_DATA_DEBUG`) the tests read, with what each is and where it comes from. The oracle files are produced by running [CodeWalker](https://github.com/dexyfex/CodeWalker) over the same install; they are optional, and the tests that need them skip without them.
 
+Concurrent reads through an `Install` reuse independently checked-out archive handles from its pool; the library
+opens another when none is spare. `examples/read_bench.rs` times install reads on an explicit thread count and
+hashes every result, for checking a change to the archive read path.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), including how to report a file this library cannot read.
+
+## Check the examples
+
+From the repository root, `cargo test -p rage-engine-formats --doc` checks the crate documentation, and
+`cargo build -p rage-engine-formats --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
 
 ## License
 
