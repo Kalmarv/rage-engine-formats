@@ -57,6 +57,7 @@
 pub mod archive;
 pub mod bounds;
 pub mod drawable;
+pub mod file_class;
 pub mod fxc;
 pub mod gtxd;
 pub mod le;
