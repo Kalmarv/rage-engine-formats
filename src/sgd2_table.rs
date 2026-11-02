@@ -259,25 +259,35 @@ impl ProgramTable {
         let Some(mine) = self.resources.get(i) else {
             return &[];
         };
-        let key = |k: usize, r: &TableResource| (self.name_position(r.name).unwrap_or(usize::MAX), k);
+        // each name's two hashes, once: a resource's name is the first name either is
+        let hashes: Vec<(u32, u32)> = self
+            .names
+            .iter()
+            .map(|n| {
+                (
+                    primase_foundations::hash::joaat(n.as_bytes()),
+                    primase_foundations::hash::joaat_exact(n.as_bytes()),
+                )
+            })
+            .collect();
+        let position = |hash: u32| {
+            hashes
+                .iter()
+                .position(|&(lower, exact)| lower == hash || exact == hash)
+        };
+        let key = |k: usize, r: &TableResource| (position(r.name).unwrap_or(usize::MAX), k);
+        let own = key(i, mine);
         let before: usize = self
             .resources
             .iter()
             .enumerate()
-            .filter(|&(k, r)| key(k, r) < key(i, mine))
+            .filter(|&(_, r)| r.constants > 0)
+            .filter(|&(k, r)| key(k, r) < own)
             .map(|(_, r)| usize::from(r.constants))
             .sum();
         self.constants
             .get(before..before.saturating_add(usize::from(mine.constants)))
             .unwrap_or_default()
-    }
-
-    /// Where in the names the one a hash is the joaat of stands.
-    fn name_position(&self, hash: u32) -> Option<usize> {
-        self.names.iter().position(|n| {
-            primase_foundations::hash::joaat(n.as_bytes()) == hash
-                || primase_foundations::hash::joaat_exact(n.as_bytes()) == hash
-        })
     }
 
     /// The name a hash is the joaat of, in the name's own case or lowercase.
