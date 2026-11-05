@@ -9,7 +9,7 @@ cargo test --workspace
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 ```
 
-The toolchain is pinned in `rust-toolchain.toml`. The synthetic tests and the doc test need no game files. The real-data tests read your own GTA V install and key material through the `GAME_DATA` file described in the [README](README.md#tests) and skip, printing the key they are missing, when it is not set. Every input they read is declared in `tests/inputs/mod.rs`; after changing a declaration, the test `real_data_inputs_are_declared` tells you what `tests/inputs/README.md` must say.
+The toolchain is pinned in `rust-toolchain.toml`. The synthetic tests and the doc test need no game files. The real-data tests read your own GTA V install and key material through the `GAME_DATA` file described in [docs/testing.md](docs/testing.md) and skip, printing the key they are missing, when it is not set. Every input they read is declared in `tests/inputs/mod.rs`; after changing a declaration, the test `real_data_inputs_are_declared` tells you what `tests/inputs/README.md` must say.
 
 The example in the README is the same code as `examples/pack_list.rs` and the crate documentation's example; a test (`tests/readme_example.rs`) fails if they differ.
 

@@ -1,25 +1,43 @@
 # rage-engine-formats
 
-A Rust library that reads the file formats of Rockstar's RAGE engine as Grand Theft Auto V stores them: bytes (or, for archives, paths) in, plain records out.
+A Rust library that reads the file formats of Grand Theft Auto V's RAGE engine. It is used by [primase](https://github.com/Kalmarv/primase), a game-asset conversion library.
 
-It was written and checked against GTA V Enhanced (resource layouts: drawables version 159, fragments 171, texture dictionaries 5, clip dictionaries 46); the Legacy edition is read where a module says so. Against an install, the real-data tests compare the readings with [CodeWalker](https://github.com/dexyfex/CodeWalker)'s. By module, it reads:
+## Features
 
-| module | reads |
-|---|---|
-| `archive`, `mount` | RPF7 archives (NG and AES ciphers, nested archives), an install's listing and file tables, and the DLC mount data that decides which archives are live |
-| `resource` | RSC7 resources: the inflated system and graphics pages and the pointers into them |
-| `drawable`, `texture`, `sga` | drawables and fragments (models, geometry, shaders and their parameters, skeletons, lights), texture dictionaries and their buffer formats |
-| `bounds` | collision bounds: primitives, geometry bounds with polygons and materials, composites |
-| `ycd`, `ycd_channels` | clip dictionaries and the decoded channel tracks of their animations |
-| `meta`, `map`, `ped` | META documents, and the map data, map types and ped variation info read from them |
-| `fxc`, `sgd2`, `sgd2_effect`, `sgd2_table` | Legacy's compiled effects (`.fxc`) and Enhanced's `SGD2` shader database with its techniques and binding tables |
-| `xml`, `rbf`, `gtxd` | the game's XML data files, their binary form (RBF) and the texture-dictionary parent list |
+- Reads RPF7 archives, including nested archives and the NG and AES ciphers
+- Opens a whole install and lists every archive and file with its stored and unpacked sizes
+- Applies the DLC mount data to find the live copy of each file, for the story-mode or GTA Online map
+- Inflates RSC7 resources into their system and graphics pages
+- Reads drawables, fragments and drawable dictionaries (`.ydr`, `.yft`, `.ydd`) with their models, geometry, shaders, skeletons and lights
+- Reads texture dictionaries (`.ytd`) and the Enhanced edition's buffer formats
+- Reads collision bounds (`.ybn`): primitives, polygon meshes with materials, and composites
+- Reads clip dictionaries (`.ycd`) and decodes their animation channels to per-frame values
+- Decodes META documents and reads map data (`.ymap`), map types (`.ytyp`) and ped variation info from them
+- Reads Legacy compiled effects (`.fxc`) and the Enhanced `SGD2` shader database with its techniques, render states and binding tables
+- Parses the game's XML data files, their binary RBF form and the texture dictionary parent list (`gtxd`)
+- Takes archive key material from the caller and checks it against caller-supplied SHA-1 digests; the crate contains no keys
+- Returns an `Error` naming the format, byte offset and expected value for malformed input instead of panicking
+- Limits how much memory sizes and counts read from a file can make it allocate
+- Uses no unsafe code, and only the archive and key modules touch the file system
 
-The [crate documentation](https://docs.rs/rage-engine-formats) groups the modules and gives the layout each reader holds a file to. The drawable, texture, bounds, clip and shader readers use the Enhanced layouts; `fxc` reads Legacy effect files and `Keys::from_legacy_executable` finds key material in a Legacy executable.
+## Getting Started
 
-## Example
+### Requirements
 
-Parsing needs no game files. This reads a DLC pack list and shows a refusal (it is `examples/pack_list.rs`, run with `cargo run --example pack_list`, and also the crate documentation's doc test):
+- Rust 1.99 or later (edition 2024)
+- To open archives: a GTA V PC install and its archive key material, which you supply yourself
+
+The resource readers use the Enhanced edition's layouts (drawables version 159, fragments 171, texture dictionaries 5, clip dictionaries 46). From the Legacy edition, the crate reads `.fxc` effect files and can find key material in the Legacy executable (`Keys::from_legacy_executable`).
+
+### Installation
+
+```sh
+cargo add rage-engine-formats
+```
+
+### Usage
+
+Parsing needs no game files. This program reads a DLC pack list and shows an error for malformed XML (it is `examples/pack_list.rs`):
 
 ```rust
 use rage_engine_formats::{Error, mount, xml};
@@ -40,65 +58,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-To open an install, pass the folder and your key material to `Install::open` (see `examples/list_install.rs`: `cargo run --example list_install -- <install folder> <key folder>`).
-
-## What it guarantees
-
-- **Checked reads.** The format readers take a byte slice or a decoded `Resource` and read through bounds-checked accessors; the whole library denies unchecked indexing, slicing, arithmetic and narrowing casts by lint (the tests, which build their fixtures, are outside it). A file that does not hold what its format says is an `Error`, not a panic, and a pointer, count or size read from a file is checked against the bytes there are before it is followed. How much a file can make a reader allocate is limited: a resource inflates to at most its compressed size times a fixed ratio plus a fixed allowance, and reads that copy out of a resource are charged against it and refused beyond four times its size.
-- **Refusals that say what was wrong.** `Error::Invalid` carries the format, the byte offset and a description of what was expected. The XML-based files (`xml`, `mount`) report the offset in the document of the markup that is wrong.
-- **Strict readers.** The whole-file formats (`fxc`, `sgd2`, `sgd2_table`, `rbf`) are read to their last byte, bytes after the last record are an error, and the XML-based readers refuse an element they do not know instead of skipping it, so a layout that differs from what the reader was checked against fails loudly.
-- **No unsafe code, no hidden I/O.** `unsafe` is denied; only the modules that open archives and key files touch the file system, and none read the environment or start processes.
-- **No key material.** The archive ciphers need keys that this crate does not contain and cannot derive: you supply them as bytes or as a folder (`archive::keys::Keys::from_parts`, `from_dir`), and may supply the SHA-1 digests they must match (`archive::keys::KeyDigests`). The crate holds no digests either.
-
-## What it does not do
-
-- It does not write or modify anything: there are no writers for any format.
-- It does not ship, find or download keys, and it does not include or read game files other than the ones you point it at.
-- It does not decode pixels or render: a texture is its description and its stored bytes; a drawable is its vertex and index buffers and shader parameters. Parts of the formats that its documentation lists as not read (the collision BVH tree, clip tags and properties, map occluders and other extensions) are left as stored or as META trees.
-- It does not interpret what a value means beyond the layout (flags, hashes and enums stay raw unless a type says otherwise).
-- It reads GTA V only; other RAGE games are untested.
-
-## Tests
-
-```sh
-cargo test --workspace
+```console
+$ cargo run --example pack_list
+["dlcpacks:/mpbeach/"]
+XML at 0x6: example.xml: </a> closes <b>, expected </b>
 ```
 
-The synthetic tests (archives written by the tests themselves, hand-built resources and effects) need nothing and always run. The real-data tests read your own GTA V install and key material, and compare against CodeWalker's readings of the same install; each one skips with a line naming the missing key when its input is not configured, so the command above is complete without any game files.
+To read an install, load the key material and open the folder. `Keys::from_dir` reads a folder holding `gtav_ng_key.dat`, `gtav_ng_decrypt_tables.dat`, `gtav_hash_lut.dat` and, optionally, `gtav_aes_key.dat`; `Keys::none()` opens only archives without a cipher.
 
-To run them, write a TOML file and set `GAME_DATA` to its path:
+```rust
+use std::path::Path;
 
-```toml
-[installs]
-gta = 'D:/games/Grand Theft Auto V'    # the install folder (Enhanced or Legacy)
+use rage_engine_formats::archive::archive_set::Install;
+use rage_engine_formats::archive::keys::Keys;
+use rage_engine_formats::drawable::Drawable;
 
-[keys]
-gta = 'D:/keys/gta'                     # the key folder, in the layout of `Keys::from_dir`
-
-[oracles]
-root = 'D:/oracles'                     # <root>/codewalker/gta/ holds CodeWalker's dumps (optional)
-
-[run]
-require = 'gate'                        # inputs marked `gate` fail instead of skipping when missing
+let keys = Keys::from_dir(Path::new("keys/gta"), None)?;
+let install = Install::open(Path::new("Grand Theft Auto V"), &keys)?;
+for file in install.listing().filter(|f| f.extension == "ydr").take(5) {
+    let drawable = Drawable::read_resource(&install.resource(file.file, &keys)?)?;
+    println!("{}: {} shaders", file.path, drawable.shaders.len());
+}
 ```
 
-The layout of the file is that of [primase-testdata](https://github.com/Kalmarv/primase-testdata) (see its `game-data.example.toml`). [tests/inputs/README.md](tests/inputs/README.md) lists every key, oracle file and debug key (`GAME_DATA_DEBUG`) the tests read, with what each is and where it comes from. The oracle files are produced by running [CodeWalker](https://github.com/dexyfex/CodeWalker) over the same install; they are optional, and the tests that need them skip without them.
+Other examples:
 
-Concurrent reads through an `Install` reuse independently checked-out archive handles from its pool; the library
-opens another when none is spare. `examples/read_bench.rs` times install reads on an explicit thread count and
-hashes every result, for checking a change to the archive read path.
+- `cargo run --example list_install -- <install folder> [<key folder>]` prints the archive count and the first files of an install.
+- `cargo run --release --example read_bench -- <install folder> <key folder> [--sample K] [--threads N] [--ext ydr,ytd,..] [--max-bytes N]` times reading an install's files and prints a digest of everything read.
 
-## Contributing
+Run the tests with `cargo test --workspace`. Tests that read a real install skip unless `GAME_DATA` points at a configuration file; see [docs/testing.md](docs/testing.md). What the readers guarantee and leave out is in [docs/guarantees.md](docs/guarantees.md), and contributing guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), including how to report a file this library cannot read.
-
-## Check the examples
-
-From the repository root, `cargo test -p rage-engine-formats --doc` checks the crate documentation, and
-`cargo build -p rage-engine-formats --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
-
-## License
-
-GPL-3.0-or-later; see [LICENSE](LICENSE).
-
-Used by [primase](https://github.com/Kalmarv/primase), a game-asset conversion library.
+Licensed under GPL-3.0-or-later; see [LICENSE](LICENSE).
