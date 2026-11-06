@@ -1,5 +1,7 @@
 # rage-engine-formats
 
+[![crates.io: rage-engine-formats](https://img.shields.io/crates/v/rage-engine-formats?label=rage-engine-formats)](https://crates.io/crates/rage-engine-formats) [![docs.rs](https://img.shields.io/docsrs/rage-engine-formats)](https://docs.rs/rage-engine-formats) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/rage-engine-formats/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/rage-engine-formats/actions/workflows/ci.yml)
+
 A Rust library that reads the file formats of Grand Theft Auto V's RAGE engine. It is used by [primase](https://github.com/Kalmarv/primase), a game-asset conversion library.
 
 ## Features
