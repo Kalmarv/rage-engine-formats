@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (2026-11-06)
+
+- `file_class`: `FileClass` and `classify(extension)`, the class of a GTA V archive member by its extension (models,
+  fragments, dictionaries, collision, map placements, archetypes, clips and the rest), independently of how a consumer
+  opens or shows it. Classifying a file does not claim it decodes; an unknown extension is `None`.
+- `sgd2_table::ProgramTable::constants_of` hashes each name once instead of once for every resource it compares, and skips the
+  resources without constants: the same records, faster (primase's GTA shader resolution test went from 146.7 s to
+  79.8 s).
+- Depends on primase-foundations 0.3.1.
+
 ## 0.2.0 (2026-10-29)
 
 - **Breaking:** depends on primase-foundations 0.3.0; `le::LE` is its `bytes::Endian`, so that type changes with it.
