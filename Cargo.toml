@@ -45,7 +45,7 @@ publish = true
 aes = { version = "=0.9.3", default-features = false }
 indexmap = { version = "=2.14.2", default-features = false, features = ["std"] }
 primase-foundations = "0.3.1"
-primase-testdata = { version = "0.1.6", git = "https://github.com/Kalmarv/primase-testdata", rev = "40acdd6a2775412cc812f67e5b3edfdc9b76c54c" }
+primase-testdata = "0.1.8"
 quick-xml = { version = "=0.42.0", default-features = false }
 serde = { version = "1", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "=1.0.154", default-features = false, features = ["std", "preserve_order", "float_roundtrip"] }
